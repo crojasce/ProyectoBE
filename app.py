@@ -527,6 +527,31 @@ with col2:
             ax2.text(i, v + max(counts2.values)*0.01, f"{v}\n({pct:.1f}%)", ha="center", va="bottom", fontsize=9)
 
         st.pyplot(fig2)
+ 
+st.markdown("### ANÁLISIS")
+        st.markdown("""
+        *Resultados de HbA1c*
+
+        Categorías principales observadas:
+
+        + >8 → la más frecuente, indica mal control glucémico.
+
+        + Norm (normal) → cantidad intermedia.
+
+        + >7 → menor frecuencia que las anteriores.
+
+        La mayoría de pacientes que sí tienen un valor registrado de HbA1c presentan niveles altos (>8), lo que confirma que el dataset refleja una población de alto riesgo (pacientes hospitalizados con diabetes).
+
+        *Resultados de glucosa sérica*
+
+        Categorías principales:
+
+        + Norm (normal) → es la más frecuente dentro de quienes tienen el dato.
+
+        + >200 y >300 → representan casos de hiperglucemia importante, con menor frecuencia pero aún relevantes.
+
+        La glucosa sérica muestra menos registros que HbA1c (muchos faltantes). Dentro de los que sí se midieron, predominan los normales, pero hay un grupo relevante con valores críticos (>200, >300).
+        """)
 
 # ------------------------
 # 5) Preprocesamiento
