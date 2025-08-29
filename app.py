@@ -668,25 +668,30 @@ if page == "EDA":
 # ------------------------
 if page == "Preprocesamiento":
     st.header("Preprocesamiento")
-    
+
     st.markdown("""
-        El conjunto de datos original presentaba retos importantes de calidad y heterogeneidad que debieron abordarse antes de la modelación. En primer lugar, se identificaron valores faltantes y categorías especiales como “None”, que en este contexto no corresponden a datos perdidos sino a la indicación de que una prueba no fue realizada (por ejemplo, en las variables A1Cresult y max_glu_serum). Estas categorías se conservaron explícitamente como niveles válidos, permitiendo al modelo aprender del hecho de que una medición no haya sido solicitada. Por otro lado, los valores codificados como “?” en variables diagnósticas fueron tratados como ausentes y adecuadamente imputados o recategorizados. Posteriormente, las variables categóricas fueron transformadas mediante codificación One-Hot, mientras que las variables numéricas se normalizaron para garantizar escalas comparables entre predictores. Finalmente, dada la marcada desproporción entre clases (pacientes reingresados vs. no reingresados), se implementaron técnicas de balanceo de clases (SMOTE y el parámetro scale_pos_weight en XGBoost), con el fin de mitigar el sesgo hacia la clase mayoritaria y mejorar la capacidad de detección de reingresos.
-        """)
-        st.markdown("""
-        - Eliminar columnas con altísimo porcentaje de missing (peso, payer_code, medical_specialty).
-        - Reemplazar `?` en race por 'Unknown' y 'Unknown/Invalid' en gender por 'Unknown'.
-        - Rellenar NaN de `A1Cresult` y `max_glu_serum` con 'None' (categoría válida).
-        - Crear target binario `readmitted_binary` (1 si `<30`, 0 otherwise).
-        - Eliminar identificadores.
-        - Sanitizar nombres de columnas.
-        - One-Hot Encoding para variables categóricas.
+    El conjunto de datos original presentaba retos importantes de calidad y heterogeneidad que debieron abordarse antes de la modelación. En primer lugar, se identificaron valores faltantes y categorías especiales como “None”, que en este contexto no corresponden a datos perdidos sino a la indicación de que una prueba no fue realizada (por ejemplo, en las variables A1Cresult y max_glu_serum). Estas categorías se conservaron explícitamente como niveles válidos, permitiendo al modelo aprender del hecho de que una medición no haya sido solicitada. Por otro lado, los valores codificados como “?” en variables diagnósticas fueron tratados como ausentes y adecuadamente imputados o recategorizados. Posteriormente, las variables categóricas fueron transformadas mediante codificación One-Hot, mientras que las variables numéricas se normalizaron para garantizar escalas comparables entre predictores. Finalmente, dada la marcada desproporción entre clases (pacientes reingresados vs. no reingresados), se implementaron técnicas de balanceo de clases (SMOTE y el parámetro scale_pos_weight en XGBoost), con el fin de mitigar el sesgo hacia la clase mayoritaria y mejorar la capacidad de detección de reingresos.
     """)
-    st.write("Se aplicarán las siguientes transformaciones (ver código en app.py):")
- if "df_raw" not in st.session_state:
-        st.warning("Sube el dataset primero.")
+
+    st.markdown("""
+    **Transformaciones principales que se aplicarán:**
+    - Eliminar columnas con altísimo porcentaje de missing (weight, payer_code, medical_specialty).
+    - Reemplazar `?` en `race` por 'Unknown' y 'Unknown/Invalid' en `gender` por 'Unknown'.
+    - Rellenar NaN de `A1Cresult` y `max_glu_serum` con 'None' (categoría válida).
+    - Crear target binario `readmitted_binary` (1 si `<30`, 0 en otro caso).
+    - Eliminar identificadores (`encounter_id`, `patient_nbr`, `readmitted`).
+    - Sanitizar nombres de columnas.
+    - One-Hot Encoding para variables categóricas.
+    """)
+
+    st.write("Se aplicarán las transformaciones descritas arriba (ver código en app.py).")
+
+    # Comprobar si el dataset fue cargado
+    if "df_raw" not in st.session_state:
+        st.warning("Sube el dataset primero en la pestaña 'Cargar datos'.")
     else:
         df = st.session_state["df_raw"]
-        
+
         if st.button("Ejecutar preprocesamiento"):
             with st.spinner("Preprocesando..."):
                 X, y, col_map = preprocess(df)
@@ -694,8 +699,8 @@ if page == "Preprocesamiento":
                 st.session_state["y"] = y
                 st.session_state["col_map"] = col_map
             st.success("Preprocesamiento completado.")
-            st.write("Dimensiones features:", X.shape)
-            st.write("Balance target (y):")
+            st.write("Dimensiones de las features:", X.shape)
+            st.write("Balance de la variable objetivo (y):")
             st.write(y.value_counts())
 
 # ------------------------
