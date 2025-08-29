@@ -290,12 +290,6 @@ if page == "Descripción del dataset":
         st.warning("Primero sube el dataset en la pestaña 'Cargar datos'.")
     else:
         df = st.session_state["df_raw"]
-
-        st.markdown("### Resumen general")
-        st.write(f"**Filas:** {df.shape[0]} — **Columnas:** {df.shape[1]}")
-        st.write("**Tipos de variables:**")
-        dtypes = pd.DataFrame(df.dtypes, columns=["dtype"]).reset_index().rename(columns={"index":"variable"})
-        st.dataframe(dtypes)
         st.markdown("### Importancia global de la diabetes mellitus")
         st.markdown("""
         La diabetes mellitus representa una de las crisis sanitarias más urgentes a nivel mundial. Según la última edición del IDF Diabetes Atlas (2025), aproximadamente 589 millones de adultos entre 20 y 79 años viven con diabetes, cifra que podría aumentar hasta 853 millones para 2050 si no se adoptan medidas efectivas.
@@ -304,6 +298,13 @@ if page == "Descripción del dataset":
         - La carga recae de manera desproporcionada sobre los países de ingresos bajos y medios, que concentran aproximadamente el 81 % de los adultos con diabetes, con una proporción significativa de casos no diagnosticados
 
         - Esta enfermedad crónica conlleva complicaciones graves como daño vascular, renal, ocular y aumento de mortalidad precoz, lo que resalta la necesidad imperiosa de mejorar la detección temprana, el acceso al tratamiento y las políticas de salud pública.
+        """)
+        st.markdown("### Importancia global de la diabetes mellitus en Colombia")
+        st.markdown("""
+        En Colombia, la situación también es preocupante. Datos del IDF Diabetes Atlas indican que el 8,4 % de la población adulta padece diabetes, lo que equivale a unos 3 033 800 casos en un total de 36 728 500 adultos 
+        - International Diabetes Federation:
+        En Bogotá, un estudio transversal realizado entre 2022 y 2023 muestra que el 11 % de los adultos tienen diabetes tipo 2, cifra superior a la estimada previamente, con elevadas tasas asociadas a factores como edad avanzada, obesidad abdominal, dislipidemia y bajo nivel educativo PubMed
+        Estos datos enfatizan la urgencia de intervenciones conjuntas entre políticas públicas, atención primaria y educación comunitaria para prevenir un aumento mayor de la prevalencia y sus complicaciones en el país.
         """)
         st.markdown("### Variables clave (breve diccionario)")
         st.markdown("""
@@ -321,6 +322,11 @@ if page == "Descripción del dataset":
         - **medicamentos individuales**: columnas binarias indicando uso (metformin, insulin, etc.).
         - **readmitted**: variable objetivo ("<30", ">30", "NO").
         """)
+        st.markdown("### Resumen general")
+        st.write(f"**Filas:** {df.shape[0]} — **Columnas:** {df.shape[1]}")
+        st.write("**Tipos de variables:**")
+        dtypes = pd.DataFrame(df.dtypes, columns=["dtype"]).reset_index().rename(columns={"index":"variable"})
+        st.dataframe(dtypes)
         st.markdown("_Nota: 'None' en A1Cresult/max_glu_serum indica que la prueba no fue realizada (se conserva como categoría). ' ? ' puede indicar missing en algunas columnas._")
 
         st.markdown("### Valores faltantes (top 30)")
