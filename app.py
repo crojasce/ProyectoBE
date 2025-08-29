@@ -1,11 +1,13 @@
 # app.py
 #
 # Streamlit app para proyecto: Predicción de reingreso (<30 días) en pacientes con diabetes
+# - Cargar datos / Descripción del dataset
 # - EDA
 # - Preprocesamiento
 # - Modelado (XGBoost y RandomForest)
 # - Optimización de umbral
-# - Explicabilidad SHAP (gráficas compatibles con Streamlit)
+# - Explicabilidad SHAP (matplotlib-safe y force_plot HTML opcional)
+# - Export de modelos
 #
 # Uso: streamlit run app.py
 #
@@ -242,10 +244,19 @@ def shap_local_plot(shap_values, X_valid, idx=0, topk=20):
     return fig, feat_contribs
 
 # ------------------------
-# UI: Sidebar
+# UI: Sidebar con la nueva pestaña "Descripción del dataset"
 # ------------------------
 st.sidebar.title("Menú")
-page = st.sidebar.radio("Navegación", ["Cargar datos", "EDA", "Preprocesamiento", "Modelado", "Umbral", "SHAP", "Resultados / Export"])
+page = st.sidebar.radio("Navegación", [
+    "Cargar datos",
+    "Descripción del dataset",
+    "EDA",
+    "Preprocesamiento",
+    "Modelado",
+    "Umbral",
+    "SHAP",
+    "Resultados / Export"
+])
 
 # ------------------------
 # 1) Cargar datos
@@ -270,7 +281,79 @@ if page == "Cargar datos":
             st.warning("Aún no hay datos cargados.")
 
 # ------------------------
-# 2) EDA
+# 2) Descripción del dataset
+# ------------------------
+if page == "Descripción del dataset":
+    st.header("Descripción del dataset")
+
+    if "df_raw" not in st.session_state:
+        st.warning("Primero sube el dataset en la pestaña 'Cargar datos'.")
+    else:
+        df = st.session_state["df_raw"]
+
+        st.markdown("### Resumen general")
+        st.write(f"**Filas:** {df.shape[0]} — **Columnas:** {df.shape[1]}")
+        st.write("**Tipos de variables:**")
+        dtypes = pd.DataFrame(df.dtypes, columns=["dtype"]).reset_index().rename(columns={"index":"variable"})
+        st.dataframe(dtypes)
+
+        st.markdown("### Variables clave (breve diccionario)")
+        st.markdown("""
+        - **encounter_id, patient_nbr**: identificadores (se eliminarán en el preprocesamiento).
+        - **race**: raza (Caucasian, AfricanAmerican, Asian, Hispanic, Other, ? -> Unknown).
+        - **gender**: género (Male, Female, Unknown/Invalid).
+        - **age**: rango de edad en intervalos de 10 años (ej. [50-60)).
+        - **admission_type_id / discharge_disposition_id / admission_source_id**: información de admisión y alta.
+        - **time_in_hospital**: días de estancia (1–14).
+        - **num_lab_procedures, num_procedures, num_medications**: conteos de pruebas, procedimientos y medicamentos.
+        - **number_outpatient / number_emergency / number_inpatient**: visitas previas (último año).
+        - **max_glu_serum**: glucosa sérica categórica (>300, >200, normal, None).
+        - **A1Cresult**: resultado HbA1c categórico (>8, >7, normal, None).
+        - **change, diabetesMed**: cambios en medicación / si se prescribió medicación antidiabética.
+        - **medicamentos individuales**: columnas binarias indicando uso (metformin, insulin, etc.).
+        - **readmitted**: variable objetivo ("<30", ">30", "NO").
+        """)
+        st.markdown("_Nota: 'None' en A1Cresult/max_glu_serum indica que la prueba no fue realizada (se conserva como categoría). ' ? ' puede indicar missing en algunas columnas._")
+
+        st.markdown("### Valores faltantes (top 30)")
+        miss = df.isnull().sum().sort_values(ascending=False)
+        st.dataframe(miss[miss > 0].head(30).rename("n_missing").to_frame())
+
+        st.markdown("### Distribución de la variable objetivo y variables relacionadas")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Conteo `readmitted`**")
+            fig, ax = plt.subplots()
+            df['readmitted'].value_counts().plot(kind='bar', ax=ax)
+            ax.set_xlabel("Categoría")
+            ax.set_ylabel("Cuenta")
+            st.pyplot(fig)
+        with col2:
+            st.write("**`A1Cresult` (conteo)**")
+            fig, ax = plt.subplots()
+            if "A1Cresult" in df.columns:
+                df['A1Cresult'].fillna("None").value_counts().plot(kind='bar', ax=ax)
+            else:
+                ax.text(0.2, 0.5, "No existe columna 'A1Cresult' en este dataset", fontsize=12)
+            st.pyplot(fig)
+
+        st.markdown("### Primeras filas y resumen numérico")
+        st.write("Vista rápida (primeras 10 filas):")
+        st.dataframe(df.head(10))
+        st.write("Resumen estadístico de variables numéricas:")
+        st.dataframe(df.describe().T)
+
+        st.markdown("### Observaciones / recomendaciones para preprocesamiento")
+        st.markdown("""
+        - Mantener explícita la categoría `'None'` en `A1Cresult` y `max_glu_serum` (significa 'no medido').  
+        - Reemplazar `?` por `'Unknown'` o `NaN` dependiendo del contexto (ej. `race`).  
+        - Eliminar columnas con porcentaje extremadamente alto de missing (por ejemplo `weight` si >90%).  
+        - Codificar variables categóricas (One-Hot) y escalar numéricas antes de modelar.  
+        - Conservar `readmitted` para generar `readmitted_binary` (1 si `<30`, 0 otro).
+        """)
+
+# ------------------------
+# 3) EDA
 # ------------------------
 if page == "EDA":
     st.header("Análisis Exploratorio de Datos (EDA)")
@@ -310,7 +393,7 @@ if page == "EDA":
             st.pyplot(fig)
 
 # ------------------------
-# 3) Preprocesamiento
+# 4) Preprocesamiento
 # ------------------------
 if page == "Preprocesamiento":
     st.header("Preprocesamiento")
@@ -340,7 +423,7 @@ if page == "Preprocesamiento":
             st.write(y.value_counts())
 
 # ------------------------
-# 4) Modelado
+# 5) Modelado
 # ------------------------
 if page == "Modelado":
     st.header("Entrenamiento de modelos")
@@ -393,7 +476,7 @@ if page == "Modelado":
             st.text(classification_report(y_valid, y_pred))
 
 # ------------------------
-# 5) Umbral
+# 6) Umbral
 # ------------------------
 if page == "Umbral":
     st.header("Optimización y ajuste de umbral")
@@ -401,7 +484,12 @@ if page == "Umbral":
         st.warning("Entrena al menos un modelo en la pestaña 'Modelado' primero.")
     else:
         # elegir modelo
-        model_name = st.selectbox("Elegir modelo para optimizar umbral", ["XGBoost" if "model_xgb" in st.session_state else None, "RandomForest" if "model_rf" in st.session_state else None])
+        model_options = []
+        if "model_xgb" in st.session_state:
+            model_options.append("XGBoost")
+        if "model_rf" in st.session_state:
+            model_options.append("RandomForest")
+        model_name = st.selectbox("Elegir modelo para optimizar umbral", model_options)
         model = st.session_state["model_xgb"] if model_name == "XGBoost" else st.session_state.get("model_rf", None)
         X_valid = st.session_state["X_valid"]
         y_valid = st.session_state["y_valid"]
@@ -427,7 +515,7 @@ if page == "Umbral":
         st.pyplot(fig)
 
 # ------------------------
-# 6) SHAP
+# 7) SHAP
 # ------------------------
 if page == "SHAP":
     st.header("Explicabilidad con SHAP (modo matplotlib / HTML)")
@@ -467,7 +555,7 @@ if page == "SHAP":
             components.html(html_str, height=600, scrolling=True)
 
 # ------------------------
-# 7) Resultados / Export
+# 8) Resultados / Export
 # ------------------------
 if page == "Resultados / Export":
     st.header("Resultados finales y exportación")
