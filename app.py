@@ -1153,11 +1153,37 @@ if page == "Resultados / Export":
 
     st.markdown("### Recomendación práctica")
     st.markdown("""
-    - Para detección máxima de reingresos (priorizar sensibilidad): usar **XGBoost** con **umbral ~0.165-0.20**.
-    - Para equilibrio (F1): usar umbral optimizado (~0.195).
-    - Documentar el umbral elegido y los costos clínicos asociados a falsos positivos y falsos negativos.
+    ##**Conclusiones**
+
+        *Interpretación desde el punto de vista médico*
+
+        **Recall alto (sensibilidad alta):**
+
+        + Detecta la mayoría de los pacientes que realmente se reingresarán.
+
+        + Ventaja: menos falsos negativos (menos pacientes de riesgo que se escapan).
+
+        + Desventaja: más falsos positivos → se etiquetan como “en riesgo” pacientes que no lo están → puede generar sobrecarga en programas de seguimiento, gasto extra de recursos o alarmas innecesarias.
+
+        **Precisión alta (pocos falsos positivos):**
+
+        + Cuando el modelo predice “riesgo de reingreso”, es bastante confiable.
+
+        + Ventaja: se usan los recursos de seguimiento de manera más focalizada.
+
+        + Desventaja: bajo recall → se dejan pasar muchos pacientes en riesgo real sin detectar.
+
+        **Equilibrio (F1-score):**
+
+        + Un término medio: ni se maximizan detecciones a costa de muchos falsos positivos, ni se minimizan recursos a costa de dejar pasar pacientes críticos.
+
+        + Suele ser la opción más razonable en estudios iniciales, sobre todo si el hospital tiene recursos limitados pero quiere detectar una fracción significativa de casos de riesgo.
+
+        **Interpretabilidad**
+
+        “En este estudio se entrenaron varios modelos de machine learning para predecir reingreso hospitalario en pacientes diabéticos. El modelo con mejor desempeño fue XGBoost, alcanzando un AUC ≈0.67–0.69. Según el criterio clínico, si se prioriza la detección de la mayor cantidad de pacientes en riesgo (recall 56%), conviene mantener el umbral estándar (0.5). En cambio, si se busca un balance entre recall y precisión (F1=0.27), conviene ajustar el umbral a ≈0.57. La decisión final depende de los recursos disponibles y de la estrategia clínica que adopte la institución.”
     """)
 
     st.markdown("---")
-    st.markdown("Créditos: Proyecto ML aplicado a Bioestadística (Diabetes).")
+    st.markdown("Carolina Rojas-Jorge Marulanda-Jheremy Reyes")
 
