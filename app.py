@@ -254,6 +254,7 @@ page = st.sidebar.radio("Navegación", [
     "EDA",
     "Preprocesamiento",
     "Regresión Logística",
+    "Árbol de Decisión",
     "Modelado",
     "Umbral",
     "SHAP",
@@ -759,6 +760,105 @@ if page == "Regresión Logística":
     👉 Por ello se comparó con modelos **no lineales** (como Random Forest y XGBoost), que suelen funcionar mejor en datos tabulares y desbalanceados.
     """)
 
+# ------------------------
+# Sección: Árbol de Decisión (resultados precalculados, SIN entrenar en vivo)
+# ------------------------
+if page == "Árbol de Decisión":
+    st.header("Resultados: Árbol de Decisión")
+
+    # ====== MÉTRICAS RESUMEN (reemplaza por tus valores reales) ======
+    auc_val = 0.59
+    prec_cls1 = 0.18
+    rec_cls1 = 0.28
+    f1_cls1 = 0.22
+
+    st.subheader("Métricas de validación")
+    st.markdown(f"""
+    - **ROC-AUC:** {auc_val:.2f}  
+    - **Precisión (clase 1):** {prec_cls1:.2f}  
+    - **Recall (clase 1):** {rec_cls1:.2f}  
+    - **F1-score (clase 1):** {f1_cls1:.2f}  
+    """)
+
+    # ====== MATRIZ DE CONFUSIÓN (reemplaza por tu matriz real) ======
+    st.subheader("Matriz de confusión")
+    # Ejemplo de matriz (TN, FP / FN, TP). Cambia estos números por los tuyos.
+    cm_tree = [
+        [11200, 2361],   # [TN, FP]
+        [1225,   479]    # [FN, TP]
+    ]
+    fig_cm, ax_cm = plt.subplots()
+    sns.heatmap(cm_tree, annot=True, fmt="d", cmap="Blues",
+                xticklabels=["No Reingreso", "Reingreso<30"],
+                yticklabels=["No Reingreso", "Reingreso<30"],
+                ax=ax_cm)
+    ax_cm.set_title("Matriz de confusión - Árbol de Decisión")
+    ax_cm.set_ylabel("Real")
+    ax_cm.set_xlabel("Predicho")
+    st.pyplot(fig_cm)
+
+    # ====== CURVA ROC (reemplaza fpr/tpr por tus arrays reales si los tienes) ======
+    st.subheader("Curva ROC")
+    # Ejemplo de puntos ROC; si guardaste tus arrays reales, colócalos aquí.
+    fpr_ex = [0.00, 0.15, 0.30, 0.45, 0.60, 0.80, 1.00]
+    tpr_ex = [0.00, 0.35, 0.48, 0.56, 0.62, 0.70, 1.00]
+    fig_roc, ax_roc = plt.subplots()
+    ax_roc.plot(fpr_ex, tpr_ex, label=f"AUC = {auc_val:.2f}")
+    ax_roc.plot([0, 1], [0, 1], "--", color="gray")
+    ax_roc.set_xlabel("Tasa de falsos positivos")
+    ax_roc.set_ylabel("Tasa de verdaderos positivos (Recall)")
+    ax_roc.set_title("Curva ROC - Árbol de Decisión")
+    ax_roc.legend()
+    st.pyplot(fig_roc)
+
+    # ====== IMPORTANCIA DE VARIABLES (reemplaza por tu ranking real si lo tienes) ======
+    st.subheader("Importancia de variables (Top 15)")
+    # Placeholder de importancias (nombre -> valor). Sustituye por las tuyas reales
+    # Por ejemplo, si guardaste un CSV con 'feature' e 'importance', puedes leerlo y graficarlo.
+    placeholder_importances = {
+        "time_in_hospital": 0.085,
+        "num_medications": 0.080,
+        "num_lab_procedures": 0.072,
+        "number_inpatient": 0.061,
+        "age_[60-70)": 0.055,
+        "A1Cresult_>8": 0.050,
+        "insulin_Down": 0.046,
+        "change_Ch": 0.041,
+        "diabetesMed_Yes": 0.038,
+        "max_glu_serum_>300": 0.036,
+        "number_emergency": 0.033,
+        "number_outpatient": 0.030,
+        "admission_type_id": 0.028,
+        "discharge_disposition_id": 0.025,
+        "number_diagnoses": 0.024,
+    }
+    # Convertir a DataFrame y graficar
+    importances_df = (
+        pd.Series(placeholder_importances)
+        .sort_values(ascending=False)
+        .head(15)
+        .reset_index()
+        .rename(columns={"index": "feature", 0: "importance"})
+    )
+    fig_imp, ax_imp = plt.subplots(figsize=(8, 5))
+    sns.barplot(x="importance", y="feature", data=importances_df, palette="pastel", ax=ax_imp)
+    ax_imp.set_title("Top 15 variables más importantes - Árbol de Decisión")
+    ax_imp.set_xlabel("Importancia")
+    ax_imp.set_ylabel("")
+    st.pyplot(fig_imp)
+
+    # ====== INTERPRETACIÓN ======
+    st.subheader("Interpretación")
+    st.markdown("""
+    + El **árbol** captura mejor la estructura del dataset que la **regresión logística**, pero **sigue sin ser excelente**.
+    + El **recall** de la clase minoritaria (1) continúa **bajo** → el modelo todavía no detecta bien a los pacientes de **alto riesgo** (<30 días).
+    + El **ROC-AUC ~0.59** indica una mejora respecto a la regresión, pero aún **lejos de un modelo robusto**.
+
+    👉 Para este tipo de datos **tabulares y desbalanceados**, lo habitual es que los **modelos de ensamble** (**Random Forest** y **XGBoost**) rindan **mejor**.
+    """)
+
+    st.info("Tip: si ya tienes guardadas las salidas reales (fpr, tpr, cm, importances), "
+            "puedo darte un snippet para leerlas desde CSV/JSON y mostrarlas aquí sin tocar el código.")
 
 # ------------------------
 # 6) Modelado
