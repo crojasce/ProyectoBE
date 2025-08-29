@@ -248,18 +248,19 @@ def shap_local_plot(shap_values, X_valid, idx=0, topk=20):
 # ------------------------
 st.sidebar.title("Menú")
 page = st.sidebar.radio("Navegación", [
-    "Objetivos del proyecto",
     "Cargar datos",
     "Descripción del dataset",
     "EDA",
     "Preprocesamiento",
-    "Regresión Logística",
-    "Árbol de Decisión",
     "Modelado",
     "Umbral",
     "SHAP",
+    "Regresión Logística",
+    "Árbol de Decisión",
+    "Random Forest",        # <-- añade esta línea
     "Resultados / Export"
 ])
+
 
 # ------------------------
 # 1) Objetivos del proyecto
@@ -859,6 +860,101 @@ if page == "Árbol de Decisión":
 
     st.info("Tip: si ya tienes guardadas las salidas reales (fpr, tpr, cm, importances), "
             "puedo darte un snippet para leerlas desde CSV/JSON y mostrarlas aquí sin tocar el código.")
+# ------------------------
+# Random Forest 
+# ------------------------
+if page == "Random Forest":
+    st.header("Resultados: Random Forest")
+
+    # ====== MÉTRICAS RESUMEN (reemplaza por tus valores reales) ======
+    auc_val = 0.64         # Ej.: tu ROC-AUC en validación/test
+    prec_cls1 = 0.43       # Precisión de la clase 1 (ejemplo)
+    rec_cls1  = 0.01       # Recall clase 1 (ejemplo)
+    f1_cls1   = 0.02       # F1 clase 1 (ejemplo)
+
+    st.subheader("Métricas de validación")
+    st.markdown(f"""
+    - **ROC-AUC:** {auc_val:.2f}  
+    - **Precisión (clase 1):** {prec_cls1:.2f}  
+    - **Recall (clase 1):** {rec_cls1:.2f}  
+    - **F1-score (clase 1):** {f1_cls1:.2f}  
+    """)
+
+    # ====== MATRIZ DE CONFUSIÓN (reemplaza por tu matriz real) ======
+    st.subheader("Matriz de confusión")
+    # Ejemplo de matriz (TN, FP / FN, TP). Cambia por tus números reales.
+    cm_rf = [
+        [12050, 1511],   # [TN, FP]
+        [1688,    16]    # [FN, TP]
+    ]
+    fig_cm, ax_cm = plt.subplots()
+    sns.heatmap(cm_rf, annot=True, fmt="d", cmap="Blues",
+                xticklabels=["No Reingreso", "Reingreso<30"],
+                yticklabels=["No Reingreso", "Reingreso<30"],
+                ax=ax_cm)
+    ax_cm.set_title("Matriz de confusión - Random Forest")
+    ax_cm.set_ylabel("Real")
+    ax_cm.set_xlabel("Predicho")
+    st.pyplot(fig_cm)
+
+    # ====== CURVA ROC (reemplaza fpr/tpr por tus arrays reales si los tienes) ======
+    st.subheader("Curva ROC")
+    # Puntos de ejemplo; si guardaste tus arrays reales, colócalos aquí.
+    fpr_ex = [0.00, 0.05, 0.10, 0.20, 0.40, 0.60, 1.00]
+    tpr_ex = [0.00, 0.10, 0.18, 0.30, 0.45, 0.58, 1.00]
+    fig_roc, ax_roc = plt.subplots()
+    ax_roc.plot(fpr_ex, tpr_ex, label=f"AUC = {auc_val:.2f}")
+    ax_roc.plot([0, 1], [0, 1], "--", color="gray")
+    ax_roc.set_xlabel("Tasa de falsos positivos")
+    ax_roc.set_ylabel("Tasa de verdaderos positivos (Recall)")
+    ax_roc.set_title("Curva ROC - Random Forest")
+    ax_roc.legend()
+    st.pyplot(fig_roc)
+
+    # ====== IMPORTANCIA DE VARIABLES (reemplaza por tu ranking real si lo tienes) ======
+    st.subheader("Importancia de variables (Top 15)")
+    # Placeholder: si guardaste tus importancias (feature_importances_), arma un dict {feature: importancia}
+    importances_dict = {
+        "time_in_hospital": 0.040,
+        "num_medications": 0.038,
+        "num_lab_procedures": 0.036,
+        "number_inpatient": 0.032,
+        "age_[60-70)": 0.030,
+        "A1Cresult_>8": 0.028,
+        "insulin_Down": 0.026,
+        "change_Ch": 0.024,
+        "diabetesMed_Yes": 0.023,
+        "max_glu_serum_>300": 0.022,
+        "number_emergency": 0.020,
+        "number_outpatient": 0.019,
+        "admission_type_id": 0.018,
+        "discharge_disposition_id": 0.017,
+        "number_diagnoses": 0.016,
+    }
+    importances_df = (
+        pd.Series(importances_dict)
+        .sort_values(ascending=False)
+        .head(15)
+        .reset_index()
+        .rename(columns={"index": "feature", 0: "importance"})
+    )
+    fig_imp, ax_imp = plt.subplots(figsize=(8, 5))
+    sns.barplot(x="importance", y="feature", data=importances_df, palette="pastel", ax=ax_imp)
+    ax_imp.set_title("Top 15 variables más importantes - Random Forest")
+    ax_imp.set_xlabel("Importancia")
+    ax_imp.set_ylabel("")
+    st.pyplot(fig_imp)
+
+    # ====== INTERPRETACIÓN ======
+    st.subheader("Interpretación")
+    st.markdown("""
+    + **Random Forest** mejoró el **ROC-AUC** global, pero **falló en captar la clase minoritaria**.
+    + Esto pasa mucho en datasets clínicos **desbalanceados**: los modelos priorizan la **clase mayoritaria** para maximizar *accuracy*.
+    + El **recall** de la **clase 1** (pacientes de riesgo) es **crítico** en este problema, y aquí quedó **prácticamente nulo**.
+
+    👉 Por ello, se **ajusta el umbral de decisión** en el Random Forest para **mejorar el recall** de reingresos (ver pestaña **Umbral**).
+    """)
+
 
 # ------------------------
 # 6) Modelado
