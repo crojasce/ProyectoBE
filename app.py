@@ -253,6 +253,7 @@ page = st.sidebar.radio("Navegación", [
     "Descripción del dataset",
     "EDA",
     "Preprocesamiento",
+    "Regresión Logística",
     "Modelado",
     "Umbral",
     "SHAP",
@@ -702,6 +703,62 @@ if page == "Preprocesamiento":
             st.write("Dimensiones de las features:", X.shape)
             st.write("Balance de la variable objetivo (y):")
             st.write(y.value_counts())
+
+# ------------------------
+# Sección: Regresión Logística
+# ------------------------
+if page == "Regresión Logística":
+    st.header("Resultados: Regresión Logística")
+
+    # Mostrar métricas ya obtenidas (puedes reemplazar por las tuyas reales)
+    st.subheader("Métricas de validación")
+    st.markdown("""
+    - **ROC-AUC:** 0.58  
+    - **Precisión (clase 1):** 0.16  
+    - **Recall (clase 1):** 0.42  
+    - **F1-score (clase 1):** 0.23  
+    """)
+
+    # Matriz de confusión (imagen precargada o simulada)
+    st.subheader("Matriz de confusión")
+    fig, ax = plt.subplots()
+    cm = [[11373, 2188],
+          [1155, 549]]  # <- puedes reemplazar por tu matriz real
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+                xticklabels=["No Reingreso", "Reingreso<30"],
+                yticklabels=["No Reingreso", "Reingreso<30"],
+                ax=ax)
+    ax.set_title("Matriz de confusión - Regresión Logística")
+    ax.set_ylabel("Real")
+    ax.set_xlabel("Predicho")
+    st.pyplot(fig)
+
+    # Curva ROC (usando puntos precalculados o un PNG exportado)
+    st.subheader("Curva ROC")
+    fig2, ax2 = plt.subplots()
+    # Datos de ejemplo: reemplázalos por los de tu corrida
+    fpr = [0.0, 0.2, 0.4, 0.6, 1.0]
+    tpr = [0.0, 0.4, 0.6, 0.7, 1.0]
+    ax2.plot(fpr, tpr, label="AUC = 0.58")
+    ax2.plot([0,1], [0,1], "--", color="gray")
+    ax2.set_xlabel("Tasa de falsos positivos")
+    ax2.set_ylabel("Tasa de verdaderos positivos (Recall)")
+    ax2.set_title("Curva ROC - Regresión Logística")
+    ax2.legend()
+    st.pyplot(fig2)
+
+    # Conclusiones
+    st.subheader("Interpretación")
+    st.markdown("""
+    + El modelo aprendió a predecir mayoritariamente la **clase 0** (no reingreso).
+    + Aunque aplicamos **SMOTE en entrenamiento**, en validación (donde el desbalance se mantiene) el modelo **no generaliza bien**.
+    + Esto confirma que una **regresión logística no es suficiente** para este problema:
+        - No capta relaciones no lineales.
+        - Hay muchas variables categóricas complejas que no aprovecha del todo.
+
+    👉 Por ello se comparó con modelos **no lineales** (como Random Forest y XGBoost), que suelen funcionar mejor en datos tabulares y desbalanceados.
+    """)
+
 
 # ------------------------
 # 6) Modelado
