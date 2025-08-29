@@ -256,7 +256,7 @@ page = st.sidebar.radio("Navegación", [
     "Random Forest",
     "Búsqueda de Umbral",
     "XGBoost (Estático)",                 # <-- NUEVA
-    "Comparación de Modelos",  # <-- NUEVA
+    "Comparación de Modelos - Estático",  # <-- NUEVA
     "XGBoost - SHAP",
     "Resultados"                 
 ])
@@ -1184,38 +1184,74 @@ if page == "XGBoost (Estático)":
         st.stop()
 
 # ------------------------
-# Comparación de Modelos 
+# Sección: Comparación de Modelos - Estático (robusta)
 # ------------------------
-if page == "Comparación de Modelos":
-    st.header("Comparación de Modelos")
-
+if page == "Comparación de Modelos - Estático":
+    import streamlit as st
     import matplotlib.pyplot as plt
     import seaborn as sns
     import pandas as pd
+    import numpy as np
 
+    st.header("Comparación de Modelos (estática)")
+
+    # Datos estáticos (edítalos si quieres)
     results = [
-        {"Modelo": "Logística (0.5)",          "ROC-AUC": 0.59, "Recall": 0.24, "Precisión": 0.15, "F1": 0.19, "Accuracy": 0.77},
-        {"Modelo": "Random Forest (0.5)",      "ROC-AUC": 0.64, "Recall": 0.01, "Precisión": 0.43, "F1": 0.02, "Accuracy": 0.89},
-        {"Modelo": "Random Forest (0.3)",      "ROC-AUC": 0.58, "Recall": 0.17, "Precisión": 0.23, "F1": 0.19, "Accuracy": 0.85},
-        {"Modelo": "XGBoost (0.5)",            "ROC-AUC": 0.69, "Recall": 0.56, "Precisión": 0.20, "F1": 0.29, "Accuracy": 0.69},
-        {"Modelo": "XGBoost (óptimo≈0.57)",    "ROC-AUC": 0.67, "Recall": 0.36, "Precisión": 0.22, "F1": 0.27, "Accuracy": 0.79},
+        {"Modelo": "Logística (0.5)",       "ROC_AUC": 0.59, "Recall": 0.24, "Precision": 0.15, "F1": 0.19, "Accuracy": 0.77},
+        {"Modelo": "Random Forest (0.5)",   "ROC_AUC": 0.64, "Recall": 0.01, "Precision": 0.43, "F1": 0.02, "Accuracy": 0.89},
+        {"Modelo": "Random Forest (0.3)",   "ROC_AUC": 0.58, "Recall": 0.17, "Precision": 0.23, "F1": 0.19, "Accuracy": 0.85},
+        {"Modelo": "XGBoost (0.5)",         "ROC_AUC": 0.69, "Recall": 0.56, "Precision": 0.20, "F1": 0.29, "Accuracy": 0.69},
+        {"Modelo": "XGBoost (opt≈0.57)",    "ROC_AUC": 0.67, "Recall": 0.36, "Precision": 0.22, "F1": 0.27, "Accuracy": 0.79},
     ]
     df_results = pd.DataFrame(results)
 
+    # Garantizar tipos numéricos
+    metric_cols = ["ROC_AUC", "Recall", "Precision", "F1", "Accuracy"]
+    for c in metric_cols:
+        df_results[c] = pd.to_numeric(df_results[c], errors="coerce")
+
+    # Mostrar tabla (sin .style para evitar errores en algunos entornos)
     st.subheader("Tabla")
-    st.dataframe(df_results.style.format("{:.2f}"), use_container_width=True)
+    st.dataframe(df_results, use_container_width=True)
 
+    # Preparar datos para gráfico
+    df_melted = df_results.melt(
+        id_vars="Modelo",
+        value_vars=metric_cols,
+        var_name="Metrica",
+        value_name="Valor"
+    )
+    # Asegurar numérico
+    df_melted["Valor"] = pd.to_numeric(df_melted["Valor"], errors="coerce")
+
+    # Orden fijo de métricas
+    order_metrics = ["ROC_AUC", "Recall", "Precision", "F1", "Accuracy"]
+    df_melted["Metrica"] = pd.Categorical(df_melted["Metrica"], categories=order_metrics, ordered=True)
+
+    # Paleta y figura
     st.subheader("Visualización")
-    metrics = ["ROC-AUC", "Recall", "Precisión", "F1", "Accuracy"]
-    df_melted = df_results.melt(id_vars="Modelo", value_vars=metrics, var_name="Métrica", value_name="Valor")
-
-    fig, ax = plt.subplots(figsize=(12,6))
-    sns.barplot(data=df_melted, x="Métrica", y="Valor", hue="Modelo", palette="pastel", ax=ax)
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.barplot(
+        data=df_melted,
+        x="Metrica",
+        y="Valor",
+        hue="Modelo",
+        palette="pastel",
+        ax=ax
+    )
     ax.set_title("Comparación de Modelos (estática)")
     ax.set_ylabel("Valor")
+    ax.set_xlabel("Métrica")
     ax.set_ylim(0, 1)
-    ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+    ax.grid(axis="y", alpha=0.25)
+
+    # Leyenda fuera para que no se corte
+    ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", title="Modelo")
+    fig.tight_layout()
     st.pyplot(fig)
+
+    # Mensaje de ayuda si algo sale mal en runtime
+    st.caption("Si esta sección no muestra el gráfico, revisa que el nombre de la página en el menú coincida exactamente con 'Comparación de Modelos - Estático'.")
 
 # ------------------------
 # XGBoost - SHAP
