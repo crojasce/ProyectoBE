@@ -1,4 +1,4 @@
-# app.py
+    # app.py
 #
 # Streamlit app para proyecto: Predicción de reingreso (<30 días) en pacientes con diabetes
 # - Cargar datos / Descripción del dataset
@@ -599,6 +599,70 @@ if page == "EDA":
 
         + El número de medicamentos puede reflejar la complejidad clínica del paciente. Aquellos con polifarmacia (muchos medicamentos) probablemente tengan mayor riesgo de complicaciones y reingresos.
         """)
+       
+        st.subheader("Interpretación rápida de las distribuciones")
+
+        # Asegurarse de que existen columnas relevantes
+        has_med = "num_medications" in df.columns
+        has_read = "readmitted" in df.columns
+        has_a1c = "A1Cresult" in df.columns
+
+        # Calcular medianas del número de medicamentos por categoría de readmitted
+        if has_med and has_read:
+            medians = df.groupby("readmitted")["num_medications"].median().reindex(["<30", ">30", "NO"])
+            med_text = (
+                f"Medianas de número de medicamentos (num_medications):\n"
+                f"- Reingreso <30 días: {int(medians['<30']) if not pd.isna(medians['<30']) else 'N/A'}\n"
+                f"- Reingreso >30 días: {int(medians['>30']) if not pd.isna(medians['>30']) else 'N/A'}\n"
+                f"- No reingreso: {int(medians['NO']) if not pd.isna(medians['NO']) else 'N/A'}"
+            )
+        else:
+            med_text = "No es posible calcular medianas de 'num_medications' por falta de columna(s)."
+
+        # Calcular proporción de A1C >8 por readmitted (si existe)
+        if has_a1c and has_read:
+            df_a1c = df.copy()
+            df_a1c["A1Cresult"] = df_a1c["A1Cresult"].fillna("None")
+            pct_a1c = (df_a1c[df_a1c["A1Cresult"] == ">8"].groupby("readmitted").size() /
+                       df_a1c.groupby("readmitted").size()).reindex(["<30", ">30", "NO"]) * 100
+            pct_text = (
+                f"Porcentaje de pacientes con A1C >8:\n"
+                f"- Reingreso <30 días: {pct_a1c['<30']:.1f}%\n"
+                f"- Reingreso >30 días: {pct_a1c['>30']:.1f}%\n"
+                f"- No reingreso: {pct_a1c['NO']:.1f}%"
+            )
+        else:
+            pct_text = "No es posible calcular proporciones de A1C >8 por falta de columna 'A1Cresult' o 'readmitted'."
+
+        # Mostrar resultados numéricos (opcional)
+        with st.expander("Ver estadísticas detalladas utilizadas para la interpretación"):
+            st.markdown("**Medianas (num_medications) por categoría de readmitted:**")
+            if has_med and has_read:
+                st.write(medians)
+            else:
+                st.write("No disponible.")
+            st.markdown("**Porcentaje de A1C >8 por categoría (si aplica):**")
+            if has_a1c and has_read:
+                st.write(pct_a1c)
+            else:
+                st.write("No disponible.")
+
+        # Mostrar los textos interpretativos solicitados, con formato
+        st.markdown("**Observaciones importantes (interpretación):**")
+        st.markdown(f"""
+        - **Los pacientes readmitidos (>30 y <30) tienden a recibir una mayor cantidad de medicamentos** en comparación con los que no fueron readmitidos.  
+          {med_text}
+
+        - **La mediana del número de medicamentos es ligeramente mayor para aquellos con readmisión dentro de 30 días.**
+
+        *Esto indica que tanto un mal control de glucosa (HbA1c alta) como el mayor número de medicamentos recetados están relacionados con una alta tasa de readmisión.*  
+        """)
+
+        # Añadir comentario numérico sobre HbA1c si se calculó
+        if has_a1c and has_read:
+            st.markdown("---")
+            st.markdown("**Nota sobre HbA1c (>8):**")
+            st.markdown(f"{pct_text}\n\nEstos porcentajes muestran que la fracción de pacientes con A1C >8 es mayor en las categorías de reingreso, sugiriendo asociación entre mal control glucémico y reingreso.")
 
 # ------------------------
 # 5) Preprocesamiento
