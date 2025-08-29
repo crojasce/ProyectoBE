@@ -528,7 +528,7 @@ with col2:
 
         st.pyplot(fig2)
  
-st.markdown("### ANÁLISIS")
+        st.markdown("### ANÁLISIS")
         st.markdown("""
         *Resultados de HbA1c*
 
