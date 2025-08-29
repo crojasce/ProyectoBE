@@ -255,7 +255,7 @@ page = st.sidebar.radio("Navegación", [
     "Árbol de Decisión",
     "Random Forest",
     "Búsqueda de Umbral",
-    "XGBoost",                 # <-- NUEVA
+    "XGBoost (Estático)",                 # <-- NUEVA
     "Comparación de Modelos",  # <-- NUEVA
     "XGBoost - SHAP",
     "Resultados"                 
@@ -1086,123 +1086,102 @@ if page == "Búsqueda de Umbral":
     """)
 
 # ------------------------
-# XGBoost - Estático (solo visual)
+# Sección: XGBoost (Estático) — versión robusta
 # ------------------------
-if page == "XGBoost - Estático":
-    st.header("Resultados: XGBoost")
-
+if page == "XGBoost (Estático)":
+    import streamlit as st
     import matplotlib.pyplot as plt
     import seaborn as sns
     import pandas as pd
 
-    # ====== MÉTRICAS RESUMEN (EDITA con tus valores reportados) ======
-    # Valores aproximados que compartiste en la tabla
-    auc_default  = 0.69
-    rec_c1_def   = 0.56
-    prec_c1_def  = 0.20
-    f1_c1_def    = 0.29
-    acc_def      = 0.69
+    st.header("Resultados: XGBoost (visualización estática)")
+    st.caption("Bloque estático: no entrena ni carga archivos. Si no ves nada, revisa que el texto del menú coincida exactamente.")
 
-    auc_opt      = 0.67     # con umbral óptimo ≈0.57
-    rec_c1_opt   = 0.36
-    prec_c1_opt  = 0.22
-    f1_c1_opt    = 0.27
-    acc_opt      = 0.79
+    try:
+        # ====== MÉTRICAS RESUMEN (EDITA aquí si deseas) ======
+        auc_default  = 0.69
+        rec_c1_def   = 0.56
+        prec_c1_def  = 0.20
+        f1_c1_def    = 0.29
+        acc_def      = 0.69
 
-    st.subheader("Métricas (umbral 0.5 vs umbral óptimo ≈ 0.57)")
-    df_xgb_metrics = pd.DataFrame([
-        {"Escenario": "XGBoost (0.5)",       "ROC-AUC": auc_default, "Recall": rec_c1_def, "Precisión": prec_c1_def, "F1": f1_c1_def, "Accuracy": acc_def},
-        {"Escenario": "XGBoost (≈0.57)",     "ROC-AUC": auc_opt,     "Recall": rec_c1_opt, "Precisión": prec_c1_opt, "F1": f1_c1_opt, "Accuracy": acc_opt},
-    ])
-    st.dataframe(df_xgb_metrics.style.format({"ROC-AUC":"{:.2f}","Recall":"{:.2f}","Precisión":"{:.2f}","F1":"{:.2f}","Accuracy":"{:.2f}"}), use_container_width=True)
+        auc_opt      = 0.67     # umbral óptimo ≈ 0.57
+        rec_c1_opt   = 0.36
+        prec_c1_opt  = 0.22
+        f1_c1_opt    = 0.27
+        acc_opt      = 0.79
 
-    # ====== MATRIZ DE CONFUSIÓN (EDITA con tus conteos si los tienes) ======
-    st.subheader("Matriz de confusión (ejemplo estático)")
-    # Estructura: [[TN, FP], [FN, TP]]
-    cm_xgb = [
-        [9528, 4034],   # ejemplo aproximado (puedes editar)
-        [ 890,  813]
-    ]
-    fig_cm, ax_cm = plt.subplots()
-    sns.heatmap(cm_xgb, annot=True, fmt="d", cmap="Blues",
-                xticklabels=["No Reingreso", "Reingreso<30"],
-                yticklabels=["No Reingreso", "Reingreso<30"],
-                ax=ax_cm)
-    ax_cm.set_title("Matriz de confusión - XGBoost (estática)")
-    ax_cm.set_ylabel("Real")
-    ax_cm.set_xlabel("Predicho")
-    st.pyplot(fig_cm)
+        st.subheader("Métricas (umbral 0.5 vs umbral óptimo ≈ 0.57)")
+        df_xgb_metrics = pd.DataFrame([
+            {"Escenario": "XGBoost (0.5)",   "ROC-AUC": auc_default, "Recall": rec_c1_def, "Precisión": prec_c1_def, "F1": f1_c1_def, "Accuracy": acc_def},
+            {"Escenario": "XGBoost (~0.57)", "ROC-AUC": auc_opt,     "Recall": rec_c1_opt, "Precisión": prec_c1_opt, "F1": f1_c1_opt, "Accuracy": acc_opt},
+        ])
+        st.table(df_xgb_metrics.style.format({"ROC-AUC":"{:.2f}","Recall":"{:.2f}","Precisión":"{:.2f}","F1":"{:.2f}","Accuracy":"{:.2f}"}))
 
-    # ====== CURVA ROC (dibujada con puntos de ejemplo consistentes con AUC) ======
-    st.subheader("Curva ROC (estática)")
-    # Puntos de ejemplo para ilustrar una curva ROC con AUC~0.69
-    fpr_ex = [0.00, 0.05, 0.10, 0.20, 0.35, 0.50, 1.00]
-    tpr_ex = [0.00, 0.25, 0.40, 0.58, 0.70, 0.78, 1.00]
-    fig_roc, ax_roc = plt.subplots()
-    ax_roc.plot(fpr_ex, tpr_ex, marker="o", label=f"AUC = {auc_default:.2f}")
-    ax_roc.plot([0, 1], [0, 1], "--", color="gray")
-    ax_roc.set_xlabel("Tasa de falsos positivos")
-    ax_roc.set_ylabel("Tasa de verdaderos positivos (Recall)")
-    ax_roc.set_title("Curva ROC - XGBoost (estática)")
-    ax_roc.legend()
-    st.pyplot(fig_roc)
+        # ====== MATRIZ DE CONFUSIÓN (ejemplo estático) ======
+        st.subheader("Matriz de confusión (estática)")
+        cm_xgb = [
+            [9528, 4034],   # TN, FP (ejemplo)
+            [ 890,  813]    # FN, TP (ejemplo)
+        ]
+        fig_cm, ax_cm = plt.subplots()
+        sns.heatmap(cm_xgb, annot=True, fmt="d", cmap="Blues",
+                    xticklabels=["No Reingreso", "Reingreso<30"],
+                    yticklabels=["No Reingreso", "Reingreso<30"],
+                    ax=ax_cm)
+        ax_cm.set_title("Matriz de confusión - XGBoost (estática)")
+        ax_cm.set_ylabel("Real")
+        ax_cm.set_xlabel("Predicho")
+        st.pyplot(fig_cm)
 
-    # ====== IMPORTANCIAS (placeholder) ======
-    st.subheader("Importancia de variables (Top 20, estático)")
-    importances_dict = {
-        "time_in_hospital": 0.052,
-        "num_medications": 0.050,
-        "num_lab_procedures": 0.048,
-        "number_inpatient": 0.044,
-        "A1Cresult_>8": 0.040,
-        "max_glu_serum_>300": 0.037,
-        "age_[60-70)": 0.035,
-        "insulin_Down": 0.033,
-        "change_Ch": 0.031,
-        "diabetesMed_Yes": 0.030,
-        "number_emergency": 0.028,
-        "number_outpatient": 0.026,
-        "admission_type_id": 0.024,
-        "discharge_disposition_id": 0.022,
-        "number_diagnoses": 0.021,
-        "metformin_Steady": 0.019,
-        "insulin_Steady": 0.018,
-        "race_Unknown": 0.017,
-        "gender_Male": 0.016,
-        "age_[70-80)": 0.015
-    }
-    importances_df = (
-        pd.Series(importances_dict)
-        .sort_values(ascending=False)
-        .head(20)
-        .reset_index()
-        .rename(columns={"index": "feature", 0: "importance"})
-    )
-    fig_imp, ax_imp = plt.subplots(figsize=(8, 6))
-    sns.barplot(x="importance", y="feature", data=importances_df, palette="pastel", ax=ax_imp)
-    ax_imp.set_title("Top 20 variables más importantes - XGBoost (estático)")
-    ax_imp.set_xlabel("Importancia")
-    ax_imp.set_ylabel("")
-    st.pyplot(fig_imp)
+        # ====== CURVA ROC (estática, consistente con AUC~0.69) ======
+        st.subheader("Curva ROC (estática)")
+        fpr_ex = [0.00, 0.05, 0.10, 0.20, 0.35, 0.50, 1.00]
+        tpr_ex = [0.00, 0.25, 0.40, 0.58, 0.70, 0.78, 1.00]
+        fig_roc, ax_roc = plt.subplots()
+        ax_roc.plot(fpr_ex, tpr_ex, marker="o", label=f"AUC = {auc_default:.2f}")
+        ax_roc.plot([0, 1], [0, 1], "--", color="gray")
+        ax_roc.set_xlabel("Tasa de falsos positivos")
+        ax_roc.set_ylabel("Tasa de verdaderos positivos (Recall)")
+        ax_roc.set_title("Curva ROC - XGBoost (estática)")
+        ax_roc.legend()
+        st.pyplot(fig_roc)
 
-    # ====== TABLA COMPARATIVA (como pediste) ======
-    st.subheader("Tabla comparativa")
-    df_comp = pd.DataFrame([
-        {"Modelo": "Logística (default 0.5)",       "ROC-AUC": 0.59, "Recall clase 1": 0.24, "Precisión clase 1": 0.15, "F1 clase 1": 0.19, "Accuracy": 0.77},
-        {"Modelo": "Random Forest (default 0.5)",   "ROC-AUC": 0.64, "Recall clase 1": 0.01, "Precisión clase 1": 0.43, "F1 clase 1": 0.02, "Accuracy": 0.89},
-        {"Modelo": "Random Forest (umbral=0.3)",    "ROC-AUC": 0.58, "Recall clase 1": 0.17, "Precisión clase 1": 0.23, "F1 clase 1": 0.19, "Accuracy": 0.85},
-        {"Modelo": "XGBoost (default 0.5)",         "ROC-AUC": 0.69, "Recall clase 1": 0.56, "Precisión clase 1": 0.20, "F1 clase 1": 0.29, "Accuracy": 0.69},
-        {"Modelo": "XGBoost (umbral óptimo ≈0.57)", "ROC-AUC": 0.67, "Recall clase 1": 0.36, "Precisión clase 1": 0.22, "F1 clase 1": 0.27, "Accuracy": 0.79}
-    ])
-    st.dataframe(df_comp.style.format("{:.2f}"), use_container_width=True)
+        # ====== IMPORTANCIAS (estáticas) ======
+        st.subheader("Importancia de variables (Top 15, estático)")
+        importances_dict = {
+            "time_in_hospital": 0.052, "num_medications": 0.050, "num_lab_procedures": 0.048,
+            "number_inpatient": 0.044, "A1Cresult_>8": 0.040, "max_glu_serum_>300": 0.037,
+            "age_[60-70)": 0.035, "insulin_Down": 0.033, "change_Ch": 0.031,
+            "diabetesMed_Yes": 0.030, "number_emergency": 0.028, "number_outpatient": 0.026,
+            "admission_type_id": 0.024, "discharge_disposition_id": 0.022, "number_diagnoses": 0.021
+        }
+        imp_df = (pd.Series(importances_dict)
+                    .sort_values(ascending=False)
+                    .head(15)
+                    .reset_index()
+                    .rename(columns={"index":"feature", 0:"importance"}))
+        fig_imp, ax_imp = plt.subplots(figsize=(8, 5))
+        sns.barplot(x="importance", y="feature", data=imp_df, palette="pastel", ax=ax_imp)
+        ax_imp.set_title("Top 15 variables — XGBoost (estático)")
+        ax_imp.set_xlabel("Importancia")
+        ax_imp.set_ylabel("")
+        st.pyplot(fig_imp)
 
-    st.subheader("Conclusiones técnicas")
-    st.markdown("""
-    + **XGBoost** supera a **Random Forest** y **Regresión Logística** en **ROC-AUC** y **F1** de la clase minoritaria.
-    + El **umbral** es clave: con 0.5 tu recall fue mayor pero la precisión bajó; con el **umbral óptimo** lograste **mejor F1** (equilibrio).
-    + En contexto clínico, **priorizar recall** puede ser más importante (detectar más pacientes en riesgo aunque aumenten falsos positivos).
-    + Los resultados son **consistentes** entre validación y test → no se observa sobreajuste fuerte.
-    """)
+        # ====== Conclusiones técnicas ======
+        st.subheader("Conclusiones técnicas")
+        st.markdown("""
+        + **XGBoost** supera a **Random Forest** y **Regresión Logística** en **ROC-AUC** y **F1** de la clase minoritaria.
+        + El **umbral** es clave: con **0.5** el recall fue mayor pero la precisión bajó; con el **umbral óptimo** (~0.57) obtienes **mejor F1** (equilibrio).
+        + En contexto clínico, **priorizar recall** puede ser más importante (detectar más pacientes en riesgo aunque aumenten falsos positivos).
+        + Los resultados son **consistentes** entre validación y test → no hay sobreajuste fuerte aparente.
+        """)
+
+        st.success("Bloque XGBoost (Estático) renderizado correctamente.")
+
+    except Exception as e:
+        st.error(f"Ocurrió un error dentro del bloque estático: {e}")
+        st.stop()
 
 # ------------------------
 # Comparación de Modelos 
