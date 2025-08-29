@@ -1,0 +1,504 @@
+# app.py
+#
+# Streamlit app para proyecto: Predicción de reingreso (<30 días) en pacientes con diabetes
+# - EDA
+# - Preprocesamiento
+# - Modelado (XGBoost y RandomForest)
+# - Optimización de umbral
+# - Explicabilidad SHAP (gráficas compatibles con Streamlit)
+#
+# Uso: streamlit run app.py
+#
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import re
+import joblib
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from imblearn.over_sampling import SMOTE
+from sklearn.metrics import (
+    roc_auc_score, roc_curve, precision_recall_curve,
+    classification_report, confusion_matrix, f1_score, precision_score, recall_score
+)
+
+sns.set_palette("pastel")
+plt.style.use("ggplot")
+
+st.set_page_config(layout="wide", page_title="Diabetes Reingreso - ML App")
+
+# ------------------------
+# Helpers: sanitizar columnas
+# ------------------------
+def sanitize_colname(name):
+    s = re.sub(r"[\[\]\<\>\(\),\s%:/\\]", "_", str(name))
+    s = re.sub(r"[^0-9a-zA-Z_]", "", s)
+    s = re.sub(r"_+", "_", s).strip("_")
+    if s == "":
+        s = "col"
+    return s
+
+# ------------------------
+# Cargar dataset (uploader)
+# ------------------------
+@st.cache_data
+def load_csv_from_file(uploaded_file):
+    df = pd.read_csv(uploaded_file)
+    return df
+
+@st.cache_data
+def load_csv_from_path(path):
+    df = pd.read_csv(path)
+    return df
+
+# ------------------------
+# Preprocesamiento: función
+# ------------------------
+def preprocess(df, drop_cols=None, use_get_dummies=True):
+    df = df.copy()
+    # columnas a eliminar si existen
+    if drop_cols is None:
+        drop_cols = ["weight", "payer_code", "medical_specialty"]
+    for c in drop_cols:
+        if c in df.columns:
+            df.drop(columns=c, inplace=True)
+
+    # Reparar codificaciones
+    if "race" in df.columns:
+        df["race"] = df["race"].replace("?", "Unknown")
+    if "gender" in df.columns:
+        df["gender"] = df["gender"].replace("Unknown/Invalid", "Unknown")
+
+    # A1Cresult y max_glu_serum: rellenar NaN con "None" (categoria válida)
+    if "A1Cresult" in df.columns:
+        df["A1Cresult"] = df["A1Cresult"].fillna("None")
+    if "max_glu_serum" in df.columns:
+        df["max_glu_serum"] = df["max_glu_serum"].fillna("None")
+
+    # Crear target binario
+    if "readmitted" in df.columns:
+        df["readmitted_binary"] = (df["readmitted"] == "<30").astype(int)
+    else:
+        st.warning("No se encontró la columna 'readmitted' en el dataset.")
+
+    # quitar identificadores
+    for c in ["encounter_id", "patient_nbr", "readmitted"]:
+        if c in df.columns:
+            df.drop(columns=c, inplace=True)
+
+    # Sanitizar nombres de columnas (para compatibilidad XGBoost)
+    old_cols = df.columns.tolist()
+    new_cols = [sanitize_colname(c) for c in old_cols]
+    # evitar duplicados
+    from collections import Counter
+    cnt = Counter(new_cols)
+    for i, name in enumerate(new_cols):
+        if cnt[name] > 1:
+            occ = sum(1 for j in range(i) if new_cols[j] == name) + 1
+            new_cols[i] = f"{name}_{occ}"
+    col_map = dict(zip(old_cols, new_cols))
+    df.rename(columns=col_map, inplace=True)
+
+    # Separar target y features
+    if "readmitted_binary" not in df.columns:
+        raise ValueError("Column 'readmitted_binary' missing after preprocess.")
+    y = df["readmitted_binary"].copy()
+    X = df.drop(columns=["readmitted_binary"])
+
+    # Identificar numéricas
+    num_cols = [c for c in X.columns if pd.api.types.is_numeric_dtype(X[c])]
+    cat_cols = [c for c in X.columns if c not in num_cols]
+
+    # Manejo de categóricas -> get_dummies (rápido y reproducible aquí)
+    if use_get_dummies and len(cat_cols) > 0:
+        X = pd.get_dummies(X, columns=cat_cols, drop_first=False)
+
+    return X, y, col_map
+
+# ------------------------
+# Entrenamiento XGBoost (con scale_pos_weight)
+# ------------------------
+@st.cache_resource
+def train_xgboost(X_train, y_train, X_valid, y_valid, params=None):
+    pos = int(y_train.sum())
+    neg = int(len(y_train) - pos)
+    scale_pos_weight = neg / pos if pos > 0 else 1.0
+
+    default_params = dict(
+        n_estimators=300,
+        learning_rate=0.05,
+        max_depth=6,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        scale_pos_weight=scale_pos_weight,
+        random_state=42,
+        use_label_encoder=False,
+        eval_metric="logloss",
+        n_jobs=-1
+    )
+    if params:
+        default_params.update(params)
+
+    model = XGBClassifier(**default_params)
+    # Algunos entornos no aceptan early_stopping_rounds en fit(), así que fallback
+    try:
+        model.fit(X_train, y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=50, verbose=False)
+    except TypeError:
+        model.fit(X_train, y_train)
+
+    return model
+
+# ------------------------
+# Entrenamiento RandomForest
+# ------------------------
+@st.cache_resource
+def train_rf(X_train, y_train, n_estimators=200):
+    model = RandomForestClassifier(n_estimators=n_estimators, class_weight="balanced", n_jobs=-1, random_state=42)
+    model.fit(X_train, y_train)
+    return model
+
+# ------------------------
+# Funciones métricas y optimización de umbral
+# ------------------------
+def optimize_thresholds(y_true, y_proba, min_prec=0.20):
+    precisions, recalls, thresholds = precision_recall_curve(y_true, y_proba)
+    f1_scores = 2 * (precisions[:-1] * recalls[:-1]) / (precisions[:-1] + recalls[:-1] + 1e-12)
+    idx_best_f1 = np.nanargmax(f1_scores)
+    best_threshold_f1 = thresholds[idx_best_f1]
+    best_f1 = f1_scores[idx_best_f1]
+    best_prec_f1 = precisions[idx_best_f1]
+    best_rec_f1 = recalls[idx_best_f1]
+
+    # ROC Youden
+    fpr, tpr, roc_thresh = roc_curve(y_true, y_proba)
+    youden = tpr - fpr
+    idx_best_youden = np.argmax(youden)
+    best_threshold_youden = roc_thresh[idx_best_youden]
+
+    # max recall con precision>=min_prec
+    valid_idxs = np.where(precisions[:-1] >= min_prec)[0]
+    best_threshold_prec_constraint = None
+    best_prec = None
+    best_rec = None
+    if valid_idxs.size > 0:
+        idx_choice = valid_idxs[np.argmax(recalls[:-1][valid_idxs])]
+        best_threshold_prec_constraint = thresholds[idx_choice]
+        best_prec = precisions[idx_choice]
+        best_rec = recalls[idx_choice]
+
+    return {
+        "best_threshold_f1": best_threshold_f1,
+        "best_f1": best_f1,
+        "best_prec_f1": best_prec_f1,
+        "best_rec_f1": best_rec_f1,
+        "best_threshold_youden": best_threshold_youden,
+        "best_threshold_prec_constraint": best_threshold_prec_constraint,
+        "prec_constraint_prec": best_prec,
+        "prec_constraint_rec": best_rec
+    }
+
+def eval_with_threshold(y_true, y_proba, threshold):
+    y_pred = (y_proba >= threshold).astype(int)
+    report = classification_report(y_true, y_pred, output_dict=True)
+    cm = confusion_matrix(y_true, y_pred)
+    return report, cm, y_pred
+
+# ------------------------
+# SHAP utils (matplotlib-safe)
+# ------------------------
+def shap_global_bar_plot(shap_values, X_valid, topk=20):
+    mean_abs_shap = np.abs(shap_values).mean(axis=0)
+    feat_names = X_valid.columns
+    df_shap = pd.DataFrame({
+        "feature": feat_names,
+        "mean_abs_shap": mean_abs_shap,
+        "mean_shap": shap_values.mean(axis=0)
+    }).sort_values("mean_abs_shap", ascending=False)
+    fig, ax = plt.subplots(figsize=(8,6))
+    sns.barplot(x="mean_abs_shap", y="feature", data=df_shap.head(topk), palette="pastel", ax=ax)
+    ax.set_title(f"Top {topk} features por mean(|SHAP|)")
+    plt.tight_layout()
+    return fig, df_shap
+
+def shap_local_plot(shap_values, X_valid, idx=0, topk=20):
+    feat_names = X_valid.columns
+    shap_vals_patient = shap_values[idx]
+    feat_contribs = pd.DataFrame({
+        "feature": feat_names,
+        "shap_value": shap_vals_patient,
+        "feature_value": X_valid.iloc[idx].values
+    }).sort_values("shap_value", key=lambda s: np.abs(s), ascending=False).head(topk)
+    fig, ax = plt.subplots(figsize=(8,6))
+    colors = ["#ff7f7f" if v>0 else "#77c0b7" for v in feat_contribs["shap_value"]]
+    ax.barh(feat_contribs["feature"][::-1], feat_contribs["shap_value"][::-1], color=colors[::-1])
+    ax.set_xlabel("SHAP value (impacto en la predicción: + => mayor riesgo)")
+    ax.set_title(f"Contribuciones SHAP (paciente idx={idx}) — top {topk}")
+    plt.tight_layout()
+    return fig, feat_contribs
+
+# ------------------------
+# UI: Sidebar
+# ------------------------
+st.sidebar.title("Menú")
+page = st.sidebar.radio("Navegación", ["Cargar datos", "EDA", "Preprocesamiento", "Modelado", "Umbral", "SHAP", "Resultados / Export"])
+
+# ------------------------
+# 1) Cargar datos
+# ------------------------
+if page == "Cargar datos":
+    st.header("Carga de datos")
+    st.markdown("Sube el archivo `diabetic_data.csv` (o el ZIP ya descomprimido).")
+    uploaded = st.file_uploader("Subir CSV", type=["csv"])
+    if uploaded:
+        df_raw = load_csv_from_file(uploaded)
+        st.success(f"Archivo cargado: {uploaded.name}")
+        st.write("Vista rápida:")
+        st.dataframe(df_raw.head())
+        st.write("Dimensiones:", df_raw.shape)
+        # cache it in session state
+        st.session_state["df_raw"] = df_raw
+    else:
+        st.info("También puedes indicar la ruta local del CSV si corres localmente.")
+        if "df_raw" in st.session_state:
+            st.write("Dataset ya cargado en la sesión.")
+        else:
+            st.warning("Aún no hay datos cargados.")
+
+# ------------------------
+# 2) EDA
+# ------------------------
+if page == "EDA":
+    st.header("Análisis Exploratorio de Datos (EDA)")
+    if "df_raw" not in st.session_state:
+        st.warning("Primero sube/indica el dataset en 'Cargar datos'.")
+    else:
+        df = st.session_state["df_raw"]
+        st.subheader("Resumen")
+        st.write(df.describe(include="all").T)
+        st.subheader("Valores faltantes (top 20)")
+        miss = df.isnull().sum().sort_values(ascending=False)
+        st.write(miss[miss>0].head(20))
+        st.subheader("Distribución variable objetivo `readmitted`")
+        fig, ax = plt.subplots()
+        df['readmitted'].value_counts().plot(kind='bar', ax=ax)
+        ax.set_xlabel("Categoria")
+        ax.set_ylabel("Cuenta")
+        st.pyplot(fig)
+
+        st.subheader("Edad, género y raza")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            fig, ax = plt.subplots()
+            df['age'].value_counts().sort_index().plot(kind='bar', ax=ax)
+            ax.set_title("Edad")
+            st.pyplot(fig)
+        with col2:
+            fig, ax = plt.subplots()
+            sns.countplot(x="gender", data=df, ax=ax)
+            ax.set_title("Género")
+            st.pyplot(fig)
+        with col3:
+            fig, ax = plt.subplots(figsize=(6,3))
+            sns.countplot(x="race", data=df, ax=ax)
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+            ax.set_title("Raza")
+            st.pyplot(fig)
+
+# ------------------------
+# 3) Preprocesamiento
+# ------------------------
+if page == "Preprocesamiento":
+    st.header("Preprocesamiento")
+    if "df_raw" not in st.session_state:
+        st.warning("Sube el dataset primero.")
+    else:
+        df = st.session_state["df_raw"]
+        st.write("Se aplicarán las siguientes transformaciones (ver código en app.py):")
+        st.markdown("""
+        - Eliminar columnas con altísimo porcentaje de missing (peso, payer_code, medical_specialty).
+        - Reemplazar `?` en race por 'Unknown' y 'Unknown/Invalid' en gender por 'Unknown'.
+        - Rellenar NaN de `A1Cresult` y `max_glu_serum` con 'None' (categoría válida).
+        - Crear target binario `readmitted_binary` (1 si `<30`, 0 otherwise).
+        - Eliminar identificadores.
+        - Sanitizar nombres de columnas.
+        - One-Hot Encoding para variables categóricas.
+        """)
+        if st.button("Ejecutar preprocesamiento"):
+            with st.spinner("Preprocesando..."):
+                X, y, col_map = preprocess(df)
+                st.session_state["X"] = X
+                st.session_state["y"] = y
+                st.session_state["col_map"] = col_map
+            st.success("Preprocesamiento completado.")
+            st.write("Dimensiones features:", X.shape)
+            st.write("Balance target (y):")
+            st.write(y.value_counts())
+
+# ------------------------
+# 4) Modelado
+# ------------------------
+if page == "Modelado":
+    st.header("Entrenamiento de modelos")
+    if "X" not in st.session_state:
+        st.warning("Ejecuta el preprocesamiento antes de entrenar.")
+    else:
+        X = st.session_state["X"]
+        y = st.session_state["y"]
+        test_size = st.sidebar.slider("Tamaño test (proporción)", 0.1, 0.4, 0.30, 0.05)
+        random_state = 42
+        X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=test_size, stratify=y, random_state=random_state)
+        X_valid, X_test, y_valid, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=random_state)
+        st.session_state.update({"X_train": X_train, "X_valid": X_valid, "X_test": X_test, "y_train": y_train, "y_valid": y_valid, "y_test": y_test})
+        st.write("Split: train", X_train.shape, "valid", X_valid.shape, "test", X_test.shape)
+
+        # OPCIONES de entrenamiento
+        st.subheader("Entrenar modelos")
+        use_smote = st.checkbox("Aplicar SMOTE en train (para RF / LogReg)", value=False)
+        model_choice = st.selectbox("Modelo", ["XGBoost (recommended)", "Random Forest"])
+        if st.button("Entrenar"):
+            with st.spinner("Entrenando... esto puede tardar varios minutos"):
+                if model_choice == "XGBoost (recommended)":
+                    # entrenar sin SMOTE y con scale_pos_weight
+                    model = train_xgboost(X_train, y_train, X_valid, y_valid)
+                    st.session_state["model_xgb"] = model
+                    st.success("XGBoost entrenado.")
+                else:
+                    if use_smote:
+                        sm = SMOTE(random_state=42)
+                        X_train_res, y_train_res = sm.fit_resample(X_train, y_train)
+                        model = train_rf(X_train_res, y_train_res)
+                    else:
+                        model = train_rf(X_train, y_train)
+                    st.session_state["model_rf"] = model
+                    st.success("Random Forest entrenado.")
+
+        # Evaluar modelos si ya entrenados
+        st.subheader("Evaluación rápida (umbral 0.5)")
+        if "model_xgb" in st.session_state:
+            model = st.session_state["model_xgb"]
+            y_proba = model.predict_proba(X_valid)[:,1]
+            y_pred = (y_proba >= 0.5).astype(int)
+            st.write("XGBoost - ROC AUC:", roc_auc_score(y_valid, y_proba))
+            st.text(classification_report(y_valid, y_pred))
+        if "model_rf" in st.session_state:
+            model = st.session_state["model_rf"]
+            y_proba = model.predict_proba(X_valid)[:,1]
+            y_pred = (y_proba >= 0.5).astype(int)
+            st.write("RandomForest - ROC AUC:", roc_auc_score(y_valid, y_proba))
+            st.text(classification_report(y_valid, y_pred))
+
+# ------------------------
+# 5) Umbral
+# ------------------------
+if page == "Umbral":
+    st.header("Optimización y ajuste de umbral")
+    if "model_xgb" not in st.session_state and "model_rf" not in st.session_state:
+        st.warning("Entrena al menos un modelo en la pestaña 'Modelado' primero.")
+    else:
+        # elegir modelo
+        model_name = st.selectbox("Elegir modelo para optimizar umbral", ["XGBoost" if "model_xgb" in st.session_state else None, "RandomForest" if "model_rf" in st.session_state else None])
+        model = st.session_state["model_xgb"] if model_name == "XGBoost" else st.session_state.get("model_rf", None)
+        X_valid = st.session_state["X_valid"]
+        y_valid = st.session_state["y_valid"]
+
+        y_proba_valid = model.predict_proba(X_valid)[:,1]
+        res = optimize_thresholds(y_valid, y_proba_valid, min_prec=st.slider("Mínima precisión aceptable para constraint", 0.05, 0.5, 0.20, 0.05))
+        st.write("RESULTADOS BÚSQUEDA DE UMBRALES")
+        st.write(f"Mejor umbral (por F1): {res['best_threshold_f1']:.4f} --> F1={res['best_f1']:.4f}, Precision={res['best_prec_f1']:.4f}, Recall={res['best_rec_f1']:.4f}")
+        st.write(f"Mejor umbral (Youden - ROC): {res['best_threshold_youden']:.4f}")
+        if res['best_threshold_prec_constraint'] is not None:
+            st.write(f"Mejor umbral (max recall con precision>={st.session_state.get('min_prec', 0.2)}): {res['best_threshold_prec_constraint']:.4f} -> Prec={res['prec_constraint_prec']:.3f}, Rec={res['prec_constraint_rec']:.3f}")
+        else:
+            st.write("No se encontró umbral con la precisión mínima exigida.")
+
+        st.subheader("Probar umbral personalizado")
+        thr = st.slider("Selecciona umbral", 0.01, 0.99, float(res['best_threshold_f1']), 0.01)
+        report, cm, y_pred = eval_with_threshold(y_valid, y_proba_valid, thr)
+        st.write("Classification report (validación):")
+        st.json(report)
+        st.write("Matriz de confusión:")
+        fig, ax = plt.subplots()
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
+        st.pyplot(fig)
+
+# ------------------------
+# 6) SHAP
+# ------------------------
+if page == "SHAP":
+    st.header("Explicabilidad con SHAP (modo matplotlib / HTML)")
+    if "model_xgb" not in st.session_state:
+        st.warning("Entrena XGBoost primero (recomendado).")
+    else:
+        model = st.session_state["model_xgb"]
+        X_valid = st.session_state["X_valid"]
+
+        st.write("Computando valores SHAP (TreeExplainer). Esto puede tardar varios segundos/minutos según el tamaño del conjunto de validación.")
+        import shap
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_valid)  # puede ser array (n, m)
+
+        st.subheader("Importancia global (matplotlib-safe)")
+        fig_bar, df_shap = shap_global_bar_plot(shap_values, X_valid, topk=20)
+        st.pyplot(fig_bar)
+        st.write("Tabla top 20 features (mean|SHAP|):")
+        st.dataframe(df_shap.head(20))
+
+        st.subheader("Explicación local (paciente)")
+        idx = st.number_input("Índice de paciente (en validación)", min_value=0, max_value=len(X_valid)-1, value=10, step=1)
+        fig_local, feat_contribs = shap_local_plot(shap_values, X_valid, idx=int(idx), topk=20)
+        st.pyplot(fig_local)
+        st.dataframe(feat_contribs)
+
+        st.markdown("### Force plot interactivo (opcional)")
+        st.markdown("Si quieres el *force_plot* interactivo, podemos generar el HTML y embeberlo (a veces no funciona en Streamlit Cloud).")
+        if st.button("Generar force_plot HTML (puede tardar)"):
+            fp = shap.force_plot(explainer.expected_value, shap_values[int(idx), :], X_valid.iloc[int(idx), :])
+            # Guardar HTML temporal
+            shap.save_html("shap_force_plot.html", fp)
+            # Leer HTML y mostrar con componente
+            import streamlit.components.v1 as components
+            with open("shap_force_plot.html", "r") as f:
+                html_str = f.read()
+            components.html(html_str, height=600, scrolling=True)
+
+# ------------------------
+# 7) Resultados / Export
+# ------------------------
+if page == "Resultados / Export":
+    st.header("Resultados finales y exportación")
+    st.write("Modelos entrenados en la sesión:")
+    if "model_xgb" in st.session_state:
+        st.write("- XGBoost disponible")
+    if "model_rf" in st.session_state:
+        st.write("- Random Forest disponible")
+
+    if st.button("Guardar modelo XGBoost (joblib)"):
+        if "model_xgb" in st.session_state:
+            joblib.dump(st.session_state["model_xgb"], "model_xgb.joblib")
+            st.success("Modelo XGBoost guardado: model_xgb.joblib")
+        else:
+            st.warning("No hay modelo XGBoost en memoria.")
+
+    if st.button("Guardar X y col_map (pickles)"):
+        if "X" in st.session_state and "col_map" in st.session_state:
+            joblib.dump(st.session_state["X"], "X_features.joblib")
+            joblib.dump(st.session_state["col_map"], "col_map.joblib")
+            st.success("Guardados X_features.joblib y col_map.joblib")
+        else:
+            st.warning("No hay X / col_map en sesión.")
+
+    st.markdown("### Recomendación práctica")
+    st.markdown("""
+    - Para detección máxima de reingresos (priorizar sensibilidad): usar **XGBoost** con **umbral ~0.165-0.20**.
+    - Para equilibrio (F1): usar umbral optimizado (~0.195).
+    - Documentar el umbral elegido y los costos clínicos asociados a falsos positivos y falsos negativos.
+    """)
+
+    st.markdown("---")
+    st.markdown("Créditos: Proyecto ML aplicado a Bioestadística (Diabetes).")
+
