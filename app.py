@@ -862,6 +862,8 @@ if page == "Árbol de Decisión":
 
     st.info("Tip: si ya tienes guardadas las salidas reales (fpr, tpr, cm, importances), "
             "puedo darte un snippet para leerlas desde CSV/JSON y mostrarlas aquí sin tocar el código.")
+
+
 # ------------------------
 # Random Forest 
 # ------------------------
@@ -957,118 +959,130 @@ if page == "Random Forest":
     👉 Por ello, se **ajusta el umbral de decisión** en el Random Forest para **mejorar el recall** de reingresos (ver pestaña **Umbral**).
     """)
 # ------------------------
-# Sección: Random Forest - Umbral (visualiza SIN entrenar en vivo)
+# Sección: Búsqueda de Umbral (Auto) - Estático (solo visual)
 # ------------------------
-if page == "Random Forest - Umbral":
-    st.header("Ajuste del umbral de decisión — Random Forest")
+if page == "Búsqueda de Umbral (Auto) - Estático":
+    st.header("Búsqueda de umbral — Visualización estática (sin correr modelo)")
 
-    from sklearn.metrics import precision_recall_curve, classification_report, confusion_matrix, roc_auc_score
     import matplotlib.pyplot as plt
     import seaborn as sns
+    import pandas as pd
+    import numpy as np
 
-    # Intentar recuperar y_valid y proba desde sesión (si entrenaste RF en la pestaña Modelado)
-    y_valid = st.session_state.get("y_valid", None)
-    X_valid = st.session_state.get("X_valid", None)
-    rf_model = st.session_state.get("model_rf", None)
+    # === Datos estáticos tomados de tus resultados ===
+    data = pd.DataFrame({
+        "threshold": [0.165, 0.195, 0.240],
+        "precision": [0.159, 0.1724, 0.2010],
+        "recall":    [0.6297, 0.4900, 0.3222],
+        "f1":        [0.254, 0.2551, 0.2472],
+        "accuracy":  [0.5865, 0.6805, 0.7810]
+    })
 
-    y_proba_rf = None
-    if (rf_model is not None) and (X_valid is not None):
-        # Si hay modelo y X_valid, calculamos probas
-        try:
-            y_proba_rf = rf_model.predict_proba(X_valid)[:, 1]
-        except Exception as e:
-            st.warning(f"No se pudieron obtener probabilidades del modelo RF en sesión: {e}")
+    st.subheader("Tabla resumen (umbral vs métricas)")
+    st.dataframe(data.style.format({
+        "threshold": "{:.3f}",
+        "precision": "{:.3f}",
+        "recall": "{:.3f}",
+        "f1": "{:.3f}",
+        "accuracy": "{:.3f}"
+    }), use_container_width=True)
 
-    # Si no hay probas en sesión, permite subir un CSV con y_valid y y_proba_rf
-    if (y_proba_rf is None) or (y_valid is None):
-        st.info("No se encontró un modelo/probabilidades en la sesión. Sube un CSV con columnas 'y_valid' y 'y_proba_rf'.")
-        up = st.file_uploader("Subir CSV con y_valid,y_proba_rf", type=["csv"])
-        if up is not None:
-            df_up = pd.read_csv(up)
-            if {"y_valid", "y_proba_rf"}.issubset(df_up.columns):
-                y_valid = df_up["y_valid"].values
-                y_proba_rf = df_up["y_proba_rf"].values
-                st.success("Datos cargados correctamente.")
-            else:
-                st.error("El CSV debe contener columnas 'y_valid' y 'y_proba_rf'.")
+    # === Gráfica: Precision / Recall / F1 vs Umbral ===
+    st.subheader("Precision / Recall / F1 vs Umbral")
+    fig1, ax1 = plt.subplots(figsize=(7,4))
+    ax1.plot(data["threshold"], data["precision"], marker="o", label="Precisión")
+    ax1.plot(data["threshold"], data["recall"], marker="o", label="Recall")
+    ax1.plot(data["threshold"], data["f1"], marker="o", label="F1")
+    ax1.set_xlabel("Umbral")
+    ax1.set_ylabel("Valor")
+    ax1.set_title("Métricas vs Umbral (valores reportados)")
+    ax1.set_xticks(data["threshold"])
+    ax1.grid(alpha=0.3)
+    ax1.legend()
+    st.pyplot(fig1)
 
-    if (y_valid is not None) and (y_proba_rf is not None):
-        # --- Curvas precisión/recall vs umbral ---
-        precisions, recalls, thresholds = precision_recall_curve(y_valid, y_proba_rf)
+    # === Gráfica: Accuracy vs Umbral ===
+    st.subheader("Accuracy vs Umbral")
+    fig2, ax2 = plt.subplots(figsize=(7,3.8))
+    sns.barplot(x="threshold", y="accuracy", data=data, palette="pastel", ax=ax2)
+    for i, row in data.iterrows():
+        ax2.text(i, row["accuracy"] + 0.01, f"{row['accuracy']:.2f}", ha="center", va="bottom", fontsize=9)
+    ax2.set_xlabel("Umbral")
+    ax2.set_ylabel("Accuracy")
+    ax2.set_title("Exactitud por umbral")
+    st.pyplot(fig2)
 
-        st.subheader("Precisión vs Recall según umbral")
-        fig_pr, ax_pr = plt.subplots()
-        # Nota: thresholds tiene longitud len(precisions)-1
-        ax_pr.plot(thresholds, precisions[:-1], label="Precisión")
-        ax_pr.plot(thresholds, recalls[:-1], label="Recall")
-        ax_pr.set_xlabel("Umbral de decisión")
-        ax_pr.set_ylabel("Valor")
-        ax_pr.set_title("Precisión vs Recall — Random Forest")
-        ax_pr.legend()
-        st.pyplot(fig_pr)
+    # (Opcional) “radar” pequeño para ver trade-offs
+    try:
+        import math
+        st.subheader("Comparación visual (radar) — Opcional")
+        # Normalizamos métricas 0..1 para el radar
+        radar_cols = ["precision", "recall", "f1", "accuracy"]
+        angles = np.linspace(0, 2*np.pi, len(radar_cols), endpoint=False).tolist()
+        angles += angles[:1]
 
-        # Slider de umbral (por defecto 0.30)
-        st.subheader("Evaluación a umbral específico")
-        thr = st.slider("Selecciona umbral", 0.01, 0.99, 0.30, 0.01)
+        fig_r, ax_r = plt.subplots(figsize=(5,5), subplot_kw=dict(polar=True))
+        for idx, row in data.iterrows():
+            values = [row[c] for c in radar_cols]
+            values += values[:1]
+            ax_r.plot(angles, values, marker="o", label=f"thr={row['threshold']:.3f}")
+            ax_r.fill(angles, values, alpha=0.08)
 
-        # Predicción con umbral
-        y_pred_thresh = (y_proba_rf >= thr).astype(int)
+        ax_r.set_xticks(angles[:-1])
+        ax_r.set_xticklabels(radar_cols)
+        ax_r.set_yticklabels([])
+        ax_r.set_title("Radar: trade-off por umbral")
+        ax_r.legend(loc="upper right", bbox_to_anchor=(1.35, 1.10))
+        st.pyplot(fig_r)
+    except Exception:
+        pass
 
-        # Métricas y matriz de confusión
-        st.markdown(f"**ROC-AUC:** {roc_auc_score(y_valid, y_proba_rf):.4f}")
-        st.markdown("**Reporte de clasificación (validación):**")
-        st.text(classification_report(y_valid, y_pred_thresh, digits=4))
+    # === Conclusiones (texto tal cual lo pediste) ===
+    st.subheader("Conclusiones e interpretación")
 
-        cm = confusion_matrix(y_valid, y_pred_thresh)
-        fig_cm, ax_cm = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
-                    xticklabels=["No Reingreso", "Reingreso<30"],
-                    yticklabels=["No Reingreso", "Reingreso<30"],
-                    ax=ax_cm)
-        ax_cm.set_title(f"Matriz de confusión - RF (umbral={thr:.2f})")
-        ax_cm.set_ylabel("Real")
-        ax_cm.set_xlabel("Predicho")
-        st.pyplot(fig_cm)
+    st.markdown("""
+    **Resumen de resultados con distintos umbrales**
 
-        # Conclusiones
-        st.subheader("Interpretación")
-        st.markdown("""
-        ##**Conclusiones**
+    **Umbral ≈ 0.165 (muy bajo)**  
+    Recall clase 1 (reingreso): 0.63 🚀 (detecta casi 2/3 de los casos en validación).  
+    Precisión clase 1: 0.16 (muchos falsos positivos).  
+    Accuracy: 0.58 (bajó bastante).  
+    👉 Este escenario es muy sensible: atrapa la mayoría de pacientes en riesgo, pero con demasiadas alarmas falsas.
 
-        *Interpretación desde el punto de vista médico*
+    **Umbral ≈ 0.240 (más conservador)**  
+    Recall clase 1: 0.32 (detecta 1/3).  
+    Precisión clase 1: 0.20 (un poco mejor).  
+    Accuracy: 0.78 (más equilibrado).  
+    👉 Buen balance si quieres algo intermedio: menos alarmas falsas, pero sacrificas detecciones.
 
-        **Recall alto (sensibilidad alta):**
+    **Umbral ≈ 0.195 en TEST (generalización)**  
+    Recall clase 1: 0.48 (casi la mitad de los reingresos detectados).  
+    Precisión clase 1: 0.17.  
+    Accuracy: 0.68.  
+    👉 Este umbral parece un punto de compromiso realista: no tan extremo como 0.165, pero mucho más útil que el default 0.5 o que el árbol simple.
+    """)
 
-        + Detecta la mayoría de los pacientes que realmente se reingresarán.
+    st.markdown("""
+    **Ajuste de umbral y desempeño del modelo**  
+    Durante la evaluación se analizó el efecto de modificar el umbral de decisión en el modelo de predicción. Se observó que con el umbral estándar (0.5) el modelo privilegiaba la precisión de la clase mayoritaria, pero presentaba baja sensibilidad para detectar reingresos. Al reducir el umbral (0.165–0.195) se incrementó notablemente el recall de la clase positiva (hasta ~63%), permitiendo identificar más pacientes en riesgo, aunque a costa de una disminución de la exactitud global y un mayor número de falsos positivos. En cambio, al aumentar ligeramente el umbral (0.240) se logró un mayor equilibrio entre precisión y sensibilidad, con una exactitud global más alta (~78%), pero un menor recall en la clase de reingresos (~32%). En la evaluación final sobre el conjunto de prueba con umbral = 0.195, se obtuvo un recall de ~48% y un F1 de ~0.25 para la clase positiva, confirmando que la **selección del umbral depende del criterio clínico**.
+    """)
 
-        + Ventaja: menos falsos negativos (menos pacientes de riesgo que se escapan).
+    st.markdown("""
+    **Resultados de la optimización de umbrales**  
+    Se exploraron distintos criterios para seleccionar el umbral:  
+    - **Mejor F1-score**: 0.195 → equilibrio relativo (Prec≈0.17, Rec≈0.49).  
+    - **Youden (ROC)**: 0.165 → máxima sensibilidad pero mucha falsa alarma.  
+    - **Máx. Recall con Precisión ≥ 0.20**: 0.240 → recall≈0.32 y desempeño más balanceado.  
+    La **elección del umbral es clínica**, no solo técnica: depende de priorizar detección (recall) versus uso eficiente de recursos (precisión).
+    """)
 
-        + Desventaja: más falsos positivos → se etiquetan como “en riesgo” pacientes que no lo están → puede generar sobrecarga en programas de seguimiento, gasto extra de recursos o alarmas innecesarias.
+    st.markdown("""
+    **Decisiones según el objetivo clínico**  
+    + Si el objetivo principal es **detectar más reingresos** aunque haya falsos positivos → usar umbral **bajo (≈0.18–0.20)**.  
+    + Si además interesa la **eficiencia hospitalaria** (reducir falsas alarmas) → usar umbral **≈0.25**.  
 
-        **Precisión alta (pocos falsos positivos):**
-
-        + Cuando el modelo predice “riesgo de reingreso”, es bastante confiable.
-
-        + Ventaja: se usan los recursos de seguimiento de manera más focalizada.
-
-        + Desventaja: bajo recall → se dejan pasar muchos pacientes en riesgo real sin detectar.
-
-        **Equilibrio (F1-score):**
-
-        + Un término medio: ni se maximizan detecciones a costa de muchos falsos positivos, ni se minimizan recursos a costa de dejar pasar pacientes críticos.
-
-        + Suele ser la opción más razonable en estudios iniciales, sobre todo si el hospital tiene recursos limitados pero quiere detectar una fracción significativa de casos de riesgo.
-
-        **Interpretabilidad**
-
-        “En este estudio se entrenaron varios modelos de machine learning para predecir reingreso hospitalario en pacientes diabéticos. El modelo con mejor desempeño fue XGBoost, alcanzando un AUC ≈0.67–0.69. Según el criterio clínico, si se prioriza la detección de la mayor cantidad de pacientes en riesgo (recall 56%), conviene mantener el umbral estándar (0.5). En cambio, si se busca un balance entre recall y precisión (F1=0.27), conviene ajustar el umbral a ≈0.57. La decisión final depende de los recursos disponibles y de la estrategia clínica que adopte la institución.”
-        """)
-
-        
-        
-
-    else:
-        st.warning("Aún no hay datos suficientes para graficar. Entrena RF en 'Modelado' o sube el CSV con y_valid,y_proba_rf.")
+    *Para complementar el trabajo, se implementa **XGBoost** con ajuste de desbalance (`scale_pos_weight`) y se compara contra **Random Forest con umbral ajustado**.*
+    """)
 
 
 # ------------------------
