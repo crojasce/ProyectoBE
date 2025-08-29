@@ -548,6 +548,40 @@ if page == "EDA":
             La glucosa sérica muestra menos registros que HbA1c (muchos faltantes). Dentro de los que sí se midieron, predominan los normales, pero hay un grupo relevante con valores críticos (>200, >300).
         """)
 
+        st.subheader("Distribuciones de variables numéricas")
+
+        col3, col4 = st.columns(2)
+
+        with col3:
+            if "time_in_hospital" in df.columns:
+                fig3, ax3 = plt.subplots(figsize=(6,4))
+                sns.histplot(df['time_in_hospital'], bins=14, kde=False, color="#99ff99", ax=ax3)
+                ax3.set_title("Distribución de días de hospitalización")
+                ax3.set_xlabel("Días")
+                ax3.set_ylabel("Frecuencia")
+                # anotar total
+                total = len(df['time_in_hospital'].dropna())
+                ax3.text(0.95, 0.95, f"n={total}", transform=ax3.transAxes,
+                         ha="right", va="top", fontsize=9, bbox=dict(facecolor="white", alpha=0.6))
+                st.pyplot(fig3)
+            else:
+                st.warning("No existe la columna 'time_in_hospital' en el dataset.")
+
+        with col4:
+            if "num_medications" in df.columns:
+                fig4, ax4 = plt.subplots(figsize=(6,4))
+                sns.histplot(df['num_medications'], bins=30, kde=False, color="#ffcc99", ax=ax4)
+                ax4.set_title("Número de medicamentos administrados")
+                ax4.set_xlabel("Medicamentos")
+                ax4.set_ylabel("Frecuencia")
+                total2 = len(df['num_medications'].dropna())
+                ax4.text(0.95, 0.95, f"n={total2}", transform=ax4.transAxes,
+                         ha="right", va="top", fontsize=9, bbox=dict(facecolor="white", alpha=0.6))
+                st.pyplot(fig4)
+            else:
+                st.warning("No existe la columna 'num_medications' en el dataset.")
+        
+
 # ------------------------
 # 5) Preprocesamiento
 # ------------------------
