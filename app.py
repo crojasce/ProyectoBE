@@ -580,7 +580,25 @@ if page == "EDA":
                 st.pyplot(fig4)
             else:
                 st.warning("No existe la columna 'num_medications' en el dataset.")
-        
+        st.markdown("""
+        *Distribución de días de hospitalización*
+
+        + La mayoría de los pacientes estuvo hospitalizado entre 2 y 4 días.
+
+        + A medida que aumentan los días, la frecuencia cae rápidamente.
+
+        + El máximo permitido en el dataset es 14 días, pero muy pocos llegan a ese límite.
+
+        + Los pacientes diabéticos suelen tener estancias cortas a moderadas, aunque los más graves pueden extenderse. Esto puede estar relacionado con el riesgo de reingreso.
+
+        *Número de medicamentos administrados*
+
+        + La mayoría recibió entre 5 y 20 medicamentos diferentes durante la hospitalización.
+
+        + Hay una larga “cola” de pacientes que recibieron muchos más medicamentos (incluso >50), pero son casos poco frecuentes.
+
+        + El número de medicamentos puede reflejar la complejidad clínica del paciente. Aquellos con polifarmacia (muchos medicamentos) probablemente tengan mayor riesgo de complicaciones y reingresos.
+        """)
 
 # ------------------------
 # 5) Preprocesamiento
