@@ -296,7 +296,15 @@ if page == "Descripción del dataset":
         st.write("**Tipos de variables:**")
         dtypes = pd.DataFrame(df.dtypes, columns=["dtype"]).reset_index().rename(columns={"index":"variable"})
         st.dataframe(dtypes)
+        st.markdown("### Importancia global de la diabetes mellitus")
+        st.markdown("""
+        La diabetes mellitus representa una de las crisis sanitarias más urgentes a nivel mundial. Según la última edición del IDF Diabetes Atlas (2025), aproximadamente 589 millones de adultos entre 20 y 79 años viven con diabetes, cifra que podría aumentar hasta 853 millones para 2050 si no se adoptan medidas efectivas.
 
+        - En 2024, la diabetes fue responsable de 3,4 millones de muertes y generó un gasto sanitario global estimado en 1 billón de dólares estadounidenses Diabetes Atlas
+        - La carga recae de manera desproporcionada sobre los países de ingresos bajos y medios, que concentran aproximadamente el 81 % de los adultos con diabetes, con una proporción significativa de casos no diagnosticados
+
+        - Esta enfermedad crónica conlleva complicaciones graves como daño vascular, renal, ocular y aumento de mortalidad precoz, lo que resalta la necesidad imperiosa de mejorar la detección temprana, el acceso al tratamiento y las políticas de salud pública.
+        """)
         st.markdown("### Variables clave (breve diccionario)")
         st.markdown("""
         - **encounter_id, patient_nbr**: identificadores (se eliminarán en el preprocesamiento).
