@@ -248,6 +248,7 @@ def shap_local_plot(shap_values, X_valid, idx=0, topk=20):
 # ------------------------
 st.sidebar.title("Menú")
 page = st.sidebar.radio("Navegación", [
+    "Objetivos del proyecto",
     "Cargar datos",
     "Descripción del dataset",
     "EDA",
@@ -259,7 +260,28 @@ page = st.sidebar.radio("Navegación", [
 ])
 
 # ------------------------
-# 1) Cargar datos
+# 1) Objetivos del proyecto
+# ------------------------
+if page == "Objetivos del proyecto":
+    st.header("Objetivos del proyecto")
+    st.markdown("### Objetivo general")
+        st.markdown("""
+       Desarrollar modelos de machine learning que predigan el riesgo de resultados adversos (p. ej., reingreso hospitalario) en pacientes con diabetes mellitus, utilizando como variable principal el resultado de la HbA1c, e identificar factores asociados para generar explicaciones interpretables y útiles para la práctica clínica.
+        """)
+     st.markdown("### Pregunta de investigación")
+        st.markdown("""
+       ¿Cuál es el modelo que mejor se ajusta a la redicción de riesgo de resultados adversos en pacientes con diabetes mellitus?
+        """)
+    st.markdown("### Activiades a desarrollar")
+        st.markdown("""
+       - Realizar un análisis descriptivo de las características demográficas, clínicas y de tratamiento de los pacientes diabéticos hospitalizados.
+        - Preprocesar los datos mediante limpieza, imputación y codificación adecuada para su uso en modelos predictivos.
+        - Entrenar y evaluar modelos supervisados (regresión logística) para predecir reingreso hospitalario, incorporando HbA1c y variables relevantes.
+        - Comparar desempeño de los modelos mediante métricas de discriminación y calibración.
+        - Identificar las variables más influyentes mediante interpretabilidad global (importancias, SHAP) y local, para guiar decisiones clínicas.
+        """)
+# ------------------------
+# 2) Cargar datos
 # ------------------------
 if page == "Cargar datos":
     st.header("Carga de datos")
@@ -281,7 +303,7 @@ if page == "Cargar datos":
             st.warning("Aún no hay datos cargados.")
 
 # ------------------------
-# 2) Descripción del dataset
+# 3) Descripción del dataset
 # ------------------------
 if page == "Descripción del dataset":
     st.header("Descripción del dataset")
@@ -370,7 +392,7 @@ if page == "Descripción del dataset":
         """)
 
 # ------------------------
-# 3) EDA
+# 4) EDA
 # ------------------------
 if page == "EDA":
     st.header("Análisis Exploratorio de Datos (EDA)")
@@ -410,7 +432,7 @@ if page == "EDA":
             st.pyplot(fig)
 
 # ------------------------
-# 4) Preprocesamiento
+# 5) Preprocesamiento
 # ------------------------
 if page == "Preprocesamiento":
     st.header("Preprocesamiento")
@@ -440,7 +462,7 @@ if page == "Preprocesamiento":
             st.write(y.value_counts())
 
 # ------------------------
-# 5) Modelado
+# 6) Modelado
 # ------------------------
 if page == "Modelado":
     st.header("Entrenamiento de modelos")
@@ -493,7 +515,7 @@ if page == "Modelado":
             st.text(classification_report(y_valid, y_pred))
 
 # ------------------------
-# 6) Umbral
+# 7) Umbral
 # ------------------------
 if page == "Umbral":
     st.header("Optimización y ajuste de umbral")
@@ -532,7 +554,7 @@ if page == "Umbral":
         st.pyplot(fig)
 
 # ------------------------
-# 7) SHAP
+# 8) SHAP
 # ------------------------
 if page == "SHAP":
     st.header("Explicabilidad con SHAP (modo matplotlib / HTML)")
@@ -572,7 +594,7 @@ if page == "SHAP":
             components.html(html_str, height=600, scrolling=True)
 
 # ------------------------
-# 8) Resultados / Export
+# 9) Resultados / Export
 # ------------------------
 if page == "Resultados / Export":
     st.header("Resultados finales y exportación")
