@@ -1151,10 +1151,9 @@ if page == "Resultados / Export":
         else:
             st.warning("No hay X / col_map en sesión.")
 
-    st.markdown("### Recomendación práctica")
+    st.markdown("### CONCLUSIONES")
     st.markdown("""
-    ##**Conclusiones**
-
+        
         *Interpretación desde el punto de vista médico*
 
         **Recall alto (sensibilidad alta):**
