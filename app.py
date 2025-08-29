@@ -262,7 +262,7 @@ page = st.sidebar.radio("Navegación", [
 # ------------------------
 # 1) Objetivos del proyecto
 # ------------------------
-    st.markdown("## MÉTODOS DE MACHINE LEARNING EN BIOESTADÍSTICA")
+    
 if page == "Objetivos del proyecto":
     st.header("MÉTODOS DE MACHINE LEARNING EN LA BIOESTADÍSTICA")
     
