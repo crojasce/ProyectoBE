@@ -462,94 +462,91 @@ if page == "EDA":
         *Esto significa que, aunque el dataset es grande, puede no ser representativo de todas las poblaciones, algo a tener en cuenta cuando se interpreten los modelos.*
         """)
 
-# -------------------------
-# Gráficas HbA1c y glucosa en EDA (pegarlas dentro de la sección EDA)
-# -------------------------
-st.subheader("Resultados de pruebas: HbA1c y glucosa sérica")
+        st.subheader("Resultados de pruebas: HbA1c y glucosa sérica")
 
-# Asegurarse de usar la copia y rellenar NaN con 'None' (mantener la categoría)
-df_plot = df.copy()
-if "A1Cresult" in df_plot.columns:
-    df_plot["A1Cresult"] = df_plot["A1Cresult"].fillna("None")
-else:
-    st.warning("No existe la columna 'A1Cresult' en el dataset.")
+        # Asegurarse de usar la copia y rellenar NaN con 'None' (mantener la categoría)
+        df_plot = df.copy()
+        if "A1Cresult" in df_plot.columns:
+            df_plot["A1Cresult"] = df_plot["A1Cresult"].fillna("None")
+        else:
+            st.warning("No existe la columna 'A1Cresult' en el dataset.")
 
-if "max_glu_serum" in df_plot.columns:
-    df_plot["max_glu_serum"] = df_plot["max_glu_serum"].fillna("None")
-else:
-    st.warning("No existe la columna 'max_glu_serum' en el dataset.")
+        if "max_glu_serum" in df_plot.columns:
+            df_plot["max_glu_serum"] = df_plot["max_glu_serum"].fillna("None")
+        else:
+            st.warning("No existe la columna 'max_glu_serum' en el dataset.")
 
-# Opcional: definir orden lógico de categorías si se conocen
-order_a1c = ["None", "Norm", ">7", ">8"]  # ajusta si tus categorías son distintas
-order_glu = ["None", "Norm", ">200", ">300"]  # ajusta según tus valores
+        # Opcional: definir orden lógico de categorías si se conocen
+        order_a1c = ["None", "Norm", ">7", ">8"]  # ajusta si tus categorías son distintas
+        order_glu = ["None", "Norm", ">200", ">300"]  # ajusta según tus valores
 
-col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-# --- HbA1c plot ---
-with col1:
-    if "A1Cresult" in df_plot.columns:
-        # preparar conteos en orden deseado (si una categoría falta, la agregamos con 0)
-        vc = df_plot["A1Cresult"].value_counts()
-        # si las categorías esperadas están en los datos, reindex; si no, usa el orden real
-        cats = [c for c in order_a1c if c in vc.index] if any(c in vc.index for c in order_a1c) else list(vc.index)
-        counts = vc.reindex(cats).fillna(0).astype(int)
+        # --- HbA1c plot ---
+        with col1:
+            if "A1Cresult" in df_plot.columns:
+                # preparar conteos en orden deseado (si una categoría falta, la agregamos con 0)
+                vc = df_plot["A1Cresult"].value_counts()
+                # si las categorías esperadas están en los datos, reindex; si no, usa el orden real
+                cats = [c for c in order_a1c if c in vc.index] if any(c in vc.index for c in order_a1c) else list(vc.index)
+                counts = vc.reindex(cats).fillna(0).astype(int)
 
-        fig, ax = plt.subplots(figsize=(6,4))
-        sns.barplot(x=counts.index, y=counts.values, palette="pastel", ax=ax)
-        ax.set_title("Resultados de HbA1c (A1Cresult)")
-        ax.set_xlabel("")
-        ax.set_ylabel("Cuenta")
+                fig, ax = plt.subplots(figsize=(6,4))
+                sns.barplot(x=counts.index, y=counts.values, palette="pastel", ax=ax)
+                ax.set_title("Resultados de HbA1c (A1Cresult)")
+                ax.set_xlabel("")
+                ax.set_ylabel("Cuenta")
 
-        # Anotar con conteos y porcentajes
-        total = counts.sum()
-        for i, v in enumerate(counts.values):
-            pct = (v / total * 100) if total>0 else 0
-            ax.text(i, v + max(counts.values)*0.01, f"{v}\n({pct:.1f}%)", ha="center", va="bottom", fontsize=9)
+                # Anotar con conteos y porcentajes
+                total = counts.sum()
+                for i, v in enumerate(counts.values):
+                    pct = (v / total * 100) if total>0 else 0
+                    ax.text(i, v + max(counts.values)*0.01, f"{v}\n({pct:.1f}%)", ha="center", va="bottom", fontsize=9)
 
-        st.pyplot(fig)
+                st.pyplot(fig)
 
-# --- Glucosa sérica plot ---
-with col2:
-    if "max_glu_serum" in df_plot.columns:
-        vc2 = df_plot["max_glu_serum"].value_counts()
-        cats2 = [c for c in order_glu if c in vc2.index] if any(c in vc2.index for c in order_glu) else list(vc2.index)
-        counts2 = vc2.reindex(cats2).fillna(0).astype(int)
+        # --- Glucosa sérica plot ---
+        with col2:
+            if "max_glu_serum" in df_plot.columns:
+                vc2 = df_plot["max_glu_serum"].value_counts()
+                cats2 = [c for c in order_glu if c in vc2.index] if any(c in vc2.index for c in order_glu) else list(vc2.index)
+                counts2 = vc2.reindex(cats2).fillna(0).astype(int)
 
-        fig2, ax2 = plt.subplots(figsize=(6,4))
-        sns.barplot(x=counts2.index, y=counts2.values, palette="pastel", ax=ax2)
-        ax2.set_title("Resultados de glucosa sérica (max_glu_serum)")
-        ax2.set_xlabel("")
-        ax2.set_ylabel("Cuenta")
+                fig2, ax2 = plt.subplots(figsize=(6,4))
+                sns.barplot(x=counts2.index, y=counts2.values, palette="pastel", ax=ax2)
+                ax2.set_title("Resultados de glucosa sérica (max_glu_serum)")
+                ax2.set_xlabel("")
+                ax2.set_ylabel("Cuenta")
 
-        total2 = counts2.sum()
-        for i, v in enumerate(counts2.values):
-            pct = (v / total2 * 100) if total2>0 else 0
-            ax2.text(i, v + max(counts2.values)*0.01, f"{v}\n({pct:.1f}%)", ha="center", va="bottom", fontsize=9)
+                total2 = counts2.sum()
+                for i, v in enumerate(counts2.values):
+                    pct = (v / total2 * 100) if total2>0 else 0
+                    ax2.text(i, v + max(counts2.values)*0.01, f"{v}\n({pct:.1f}%)", ha="center", va="bottom", fontsize=9)
 
-        st.pyplot(fig2)
+                st.pyplot(fig2)
  
-st.markdown("### ANÁLISIS")
-st.markdown("""
-    *Resultados de HbA1c*
+        st.markdown("### ANÁLISIS")
+        st.markdown("""
+            *Resultados de HbA1c*
 
-    Categorías principales observadas:
+            Categorías principales observadas:
 
-    + >8 → la más frecuente, indica mal control glucémico.
+            + >8 → la más frecuente, indica mal control glucémico.
 
-    + Norm (normal) → cantidad intermedia.
+            + Norm (normal) → cantidad intermedia.
 
-    + >7 → menor frecuencia que las anteriores.
+            + >7 → menor frecuencia que las anteriores.
 
-    La mayoría de pacientes que sí tienen un valor registrado de HbA1c presentan niveles altos (>8), lo que confirma que el dataset refleja una población de alto riesgo (pacientes hospitalizados con diabetes).
+            La mayoría de pacientes que sí tienen un valor registrado de HbA1c presentan niveles altos (>8), lo que confirma que el dataset refleja una población de alto riesgo (pacientes hospitalizados con diabetes).
+        
+            *Resultados de glucosa sérica*
 
-    *Resultados de glucosa sérica*
+            Categorías principales:
 
-    Categorías principales:
-
-    + Norm (normal) → es la más frecuente dentro de quienes tienen el dato.
-    + >200 y >300 → representan casos de hiperglucemia importante, con menor frecuencia pero aún relevantes.
-    La glucosa sérica muestra menos registros que HbA1c (muchos faltantes). Dentro de los que sí se midieron, predominan los normales, pero hay un grupo relevante con valores críticos (>200, >300).
-""")
+            + Norm (normal) → es la más frecuente dentro de quienes tienen el dato.
+            + >200 y >300 → representan casos de hiperglucemia importante, con menor frecuencia pero aún relevantes.
+            La glucosa sérica muestra menos registros que HbA1c (muchos faltantes). Dentro de los que sí se midieron, predominan los normales, pero hay un grupo relevante con valores críticos (>200, >300).
+        """)
 
 # ------------------------
 # 5) Preprocesamiento
