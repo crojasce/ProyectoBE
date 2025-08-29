@@ -1250,8 +1250,7 @@ if page == "Comparación de Modelos - Estático":
     fig.tight_layout()
     st.pyplot(fig)
 
-    # Mensaje de ayuda si algo sale mal en runtime
-    st.caption("Si esta sección no muestra el gráfico, revisa que el nombre de la página en el menú coincida exactamente con 'Comparación de Modelos - Estático'.")
+    
 
 # ------------------------
 # XGBoost - SHAP
