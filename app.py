@@ -265,21 +265,21 @@ page = st.sidebar.radio("Navegación", [
 if page == "Objetivos del proyecto":
     st.header("Objetivos del proyecto")
     st.markdown("### Objetivo general")
-        st.markdown("""
-       Desarrollar modelos de machine learning que predigan el riesgo de resultados adversos (p. ej., reingreso hospitalario) en pacientes con diabetes mellitus, utilizando como variable principal el resultado de la HbA1c, e identificar factores asociados para generar explicaciones interpretables y útiles para la práctica clínica.
-        """)
-     st.markdown("### Pregunta de investigación")
-        st.markdown("""
-       ¿Cuál es el modelo que mejor se ajusta a la redicción de riesgo de resultados adversos en pacientes con diabetes mellitus?
-        """)
+    st.markdown("""
+    Desarrollar modelos de machine learning que predigan el riesgo de resultados adversos (p. ej., reingreso hospitalario) en pacientes con diabetes mellitus, utilizando como variable principal el resultado de la HbA1c, e identificar factores asociados para generar explicaciones interpretables y útiles para la práctica clínica.
+    """)
+    st.markdown("### Pregunta de investigación")
+    st.markdown("""
+    ¿Cuál es el modelo que mejor se ajusta a la redicción de riesgo de resultados adversos en pacientes con diabetes mellitus?
+    """)
     st.markdown("### Activiades a desarrollar")
-        st.markdown("""
-       - Realizar un análisis descriptivo de las características demográficas, clínicas y de tratamiento de los pacientes diabéticos hospitalizados.
-        - Preprocesar los datos mediante limpieza, imputación y codificación adecuada para su uso en modelos predictivos.
-        - Entrenar y evaluar modelos supervisados (regresión logística) para predecir reingreso hospitalario, incorporando HbA1c y variables relevantes.
-        - Comparar desempeño de los modelos mediante métricas de discriminación y calibración.
-        - Identificar las variables más influyentes mediante interpretabilidad global (importancias, SHAP) y local, para guiar decisiones clínicas.
-        """)
+    st.markdown("""
+    - Realizar un análisis descriptivo de las características demográficas, clínicas y de tratamiento de los pacientes diabéticos hospitalizados.
+    - Preprocesar los datos mediante limpieza, imputación y codificación adecuada para su uso en modelos predictivos.
+    - Entrenar y evaluar modelos supervisados (regresión logística) para predecir reingreso hospitalario, incorporando HbA1c y variables relevantes.
+    - Comparar desempeño de los modelos mediante métricas de discriminación y calibración.
+    - Identificar las variables más influyentes mediante interpretabilidad global (importancias, SHAP) y local, para guiar decisiones clínicas.
+    """)
 # ------------------------
 # 2) Cargar datos
 # ------------------------
