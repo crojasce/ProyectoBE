@@ -528,8 +528,8 @@ with col2:
 
         st.pyplot(fig2)
  
-    st.markdown("### ANÁLISIS")
-    st.markdown("""
+st.markdown("### ANÁLISIS")
+st.markdown("""
     *Resultados de HbA1c*
 
     Categorías principales observadas:
@@ -549,7 +549,7 @@ with col2:
     + Norm (normal) → es la más frecuente dentro de quienes tienen el dato.
     + >200 y >300 → representan casos de hiperglucemia importante, con menor frecuencia pero aún relevantes.
     La glucosa sérica muestra menos registros que HbA1c (muchos faltantes). Dentro de los que sí se midieron, predominan los normales, pero hay un grupo relevante con valores críticos (>200, >300).
-    """)
+""")
 
 # ------------------------
 # 5) Preprocesamiento
