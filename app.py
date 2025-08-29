@@ -684,7 +684,7 @@ if page == "Preprocesamiento":
     - One-Hot Encoding para variables categóricas.
     """)
 
-    st.write("Se aplicarán las transformaciones descritas arriba (ver código en app.py).")
+    
 
     # Comprobar si el dataset fue cargado
     if "df_raw" not in st.session_state:
