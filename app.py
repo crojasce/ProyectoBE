@@ -432,7 +432,34 @@ if page == "EDA":
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
             ax.set_title("Raza")
             st.pyplot(fig)
+         st.markdown("""
+         + La mayoría de los pacientes están en los rangos [60–70), [70–80) y [50–60).
 
+         + Muy pocos pacientes son jóvenes: casi no hay en [0–30).
+
+        + Esto tiene sentido clínico: la diabetes es más prevalente en adultos mayores, y los riesgos de complicaciones aumentan con la edad.
+
+        *Distribución por género:*
+        + Mujeres (Female): ligeramente más que los hombres.
+
+        + Hombres (Male): segunda categoría más frecuente.
+
+        + Hay unos pocos casos marcados como Unknown/Invalid que probablemente debamos limpiar o recodificar.
+
+        Esto refleja que la diabetes afecta tanto a hombres como a mujeres, sin un sesgo extremo de género en este dataset.
+
+        *Distribución por raza:*
+
+        + La gran mayoría de pacientes registrados son Caucasian.
+
+        + El segundo grupo más frecuente es AfricanAmerican.
+
+        + Minorías: Hispanic, Asian, Other, con números pequeños.
+
+        Hay algunos valores "?", que representan missing values codificados como texto → estos debemos tratarlos en preprocesamiento (por ejemplo, recodificar como "Unknown").
+
+        *Esto significa que, aunque el dataset es grande, puede no ser representativo de todas las poblaciones, algo a tener en cuenta cuando se interpreten los modelos.*
+        """)
 # ------------------------
 # 5) Preprocesamiento
 # ------------------------
