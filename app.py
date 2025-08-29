@@ -673,7 +673,7 @@ if page == "Preprocesamiento":
     else:
         df = st.session_state["df_raw"]
         st.write("Se aplicarán las siguientes transformaciones (ver código en app.py):")
-         st.markdown("""
+        st.markdown("""
         El conjunto de datos original presentaba retos importantes de calidad y heterogeneidad que debieron abordarse antes de la modelación. En primer lugar, se identificaron valores faltantes y categorías especiales como “None”, que en este contexto no corresponden a datos perdidos sino a la indicación de que una prueba no fue realizada (por ejemplo, en las variables A1Cresult y max_glu_serum). Estas categorías se conservaron explícitamente como niveles válidos, permitiendo al modelo aprender del hecho de que una medición no haya sido solicitada. Por otro lado, los valores codificados como “?” en variables diagnósticas fueron tratados como ausentes y adecuadamente imputados o recategorizados. Posteriormente, las variables categóricas fueron transformadas mediante codificación One-Hot, mientras que las variables numéricas se normalizaron para garantizar escalas comparables entre predictores. Finalmente, dada la marcada desproporción entre clases (pacientes reingresados vs. no reingresados), se implementaron técnicas de balanceo de clases (SMOTE y el parámetro scale_pos_weight en XGBoost), con el fin de mitigar el sesgo hacia la clase mayoritaria y mejorar la capacidad de detección de reingresos.
         """)
         st.markdown("""
