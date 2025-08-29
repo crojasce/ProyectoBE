@@ -255,7 +255,7 @@ page = st.sidebar.radio("Navegación", [
     "Árbol de Decisión",
     "Random Forest",   
     "Búsqueda de Umbral",
-    "SHAP",
+    "EXPLICABILIDAD",
     "Resultados / Export"
 ])
 
@@ -1086,9 +1086,9 @@ if page == "Búsqueda de Umbral":
 
 
 # ------------------------
-# 8) SHAP
+# 8) EXPLICABILIDAD
 # ------------------------
-if page == "SHAP":
+if page == EXPLICABILIDAD":
     st.header("Explicabilidad con SHAP (modo matplotlib / HTML)")
     if "model_xgb" not in st.session_state:
         st.warning("Entrena XGBoost primero (recomendado).")
