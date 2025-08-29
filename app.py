@@ -761,7 +761,7 @@ if page == "Regresión Logística":
     """)
 
 # ------------------------
-# Sección: Árbol de Decisión (resultados precalculados, SIN entrenar en vivo)
+# Árbol de Decisión 
 # ------------------------
 if page == "Árbol de Decisión":
     st.header("Resultados: Árbol de Decisión")
