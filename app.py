@@ -432,7 +432,7 @@ if page == "EDA":
             ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
             ax.set_title("Raza")
             st.pyplot(fig)
-         st.markdown("""
+        st.markdown("""
          + La mayoría de los pacientes están en los rangos [60–70), [70–80) y [50–60).
 
          + Muy pocos pacientes son jóvenes: casi no hay en [0–30).
