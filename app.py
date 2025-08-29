@@ -308,6 +308,7 @@ if page == "Descripción del dataset":
         st.markdown("### Contexto y motivación")
         st.markdown("""
         La diabetes mellitus es una de las principales causas de morbilidad y mortalidad en el mundo. La medición de la hemoglobina glicosilada (HbA1c) es un indicador clave del control glucémico y se ha asociado con mejores resultados clínicos y menor riesgo de complicaciones. En el contexto hospitalario, la identificación y manejo oportuno del control glucémico representan una oportunidad para reducir reingresos y optimizar la atención. Nuestro proyecto se centra en analizar datos clínicos de hospitalizaciones en pacientes con diagnóstico de diabetes, explorando el papel de la HbA1c y otras variables en la predicción de riesgo.
+        """)
         st.markdown("### Variables clave (breve diccionario)")
         st.markdown("""
         - **encounter_id, patient_nbr**: identificadores (se eliminarán en el preprocesamiento).
