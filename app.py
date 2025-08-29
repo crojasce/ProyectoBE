@@ -257,9 +257,11 @@ page = st.sidebar.radio("Navegación", [
     "SHAP",
     "Regresión Logística",
     "Árbol de Decisión",
-    "Random Forest",        # <-- añade esta línea
+    "Random Forest",        
+    "Random Forest - Umbral",   # <-- añade esta
     "Resultados / Export"
 ])
+
 
 
 # ------------------------
@@ -954,6 +956,91 @@ if page == "Random Forest":
 
     👉 Por ello, se **ajusta el umbral de decisión** en el Random Forest para **mejorar el recall** de reingresos (ver pestaña **Umbral**).
     """)
+# ------------------------
+# Sección: Random Forest - Umbral (visualiza SIN entrenar en vivo)
+# ------------------------
+if page == "Random Forest - Umbral":
+    st.header("Ajuste del umbral de decisión — Random Forest")
+
+    from sklearn.metrics import precision_recall_curve, classification_report, confusion_matrix, roc_auc_score
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    # Intentar recuperar y_valid y proba desde sesión (si entrenaste RF en la pestaña Modelado)
+    y_valid = st.session_state.get("y_valid", None)
+    X_valid = st.session_state.get("X_valid", None)
+    rf_model = st.session_state.get("model_rf", None)
+
+    y_proba_rf = None
+    if (rf_model is not None) and (X_valid is not None):
+        # Si hay modelo y X_valid, calculamos probas
+        try:
+            y_proba_rf = rf_model.predict_proba(X_valid)[:, 1]
+        except Exception as e:
+            st.warning(f"No se pudieron obtener probabilidades del modelo RF en sesión: {e}")
+
+    # Si no hay probas en sesión, permite subir un CSV con y_valid y y_proba_rf
+    if (y_proba_rf is None) or (y_valid is None):
+        st.info("No se encontró un modelo/probabilidades en la sesión. Sube un CSV con columnas 'y_valid' y 'y_proba_rf'.")
+        up = st.file_uploader("Subir CSV con y_valid,y_proba_rf", type=["csv"])
+        if up is not None:
+            df_up = pd.read_csv(up)
+            if {"y_valid", "y_proba_rf"}.issubset(df_up.columns):
+                y_valid = df_up["y_valid"].values
+                y_proba_rf = df_up["y_proba_rf"].values
+                st.success("Datos cargados correctamente.")
+            else:
+                st.error("El CSV debe contener columnas 'y_valid' y 'y_proba_rf'.")
+
+    if (y_valid is not None) and (y_proba_rf is not None):
+        # --- Curvas precisión/recall vs umbral ---
+        precisions, recalls, thresholds = precision_recall_curve(y_valid, y_proba_rf)
+
+        st.subheader("Precisión vs Recall según umbral")
+        fig_pr, ax_pr = plt.subplots()
+        # Nota: thresholds tiene longitud len(precisions)-1
+        ax_pr.plot(thresholds, precisions[:-1], label="Precisión")
+        ax_pr.plot(thresholds, recalls[:-1], label="Recall")
+        ax_pr.set_xlabel("Umbral de decisión")
+        ax_pr.set_ylabel("Valor")
+        ax_pr.set_title("Precisión vs Recall — Random Forest")
+        ax_pr.legend()
+        st.pyplot(fig_pr)
+
+        # Slider de umbral (por defecto 0.30)
+        st.subheader("Evaluación a umbral específico")
+        thr = st.slider("Selecciona umbral", 0.01, 0.99, 0.30, 0.01)
+
+        # Predicción con umbral
+        y_pred_thresh = (y_proba_rf >= thr).astype(int)
+
+        # Métricas y matriz de confusión
+        st.markdown(f"**ROC-AUC:** {roc_auc_score(y_valid, y_proba_rf):.4f}")
+        st.markdown("**Reporte de clasificación (validación):**")
+        st.text(classification_report(y_valid, y_pred_thresh, digits=4))
+
+        cm = confusion_matrix(y_valid, y_pred_thresh)
+        fig_cm, ax_cm = plt.subplots()
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+                    xticklabels=["No Reingreso", "Reingreso<30"],
+                    yticklabels=["No Reingreso", "Reingreso<30"],
+                    ax=ax_cm)
+        ax_cm.set_title(f"Matriz de confusión - RF (umbral={thr:.2f})")
+        ax_cm.set_ylabel("Real")
+        ax_cm.set_xlabel("Predicho")
+        st.pyplot(fig_cm)
+
+        # Conclusiones
+        st.subheader("Interpretación")
+        st.markdown("""
+        + Ajustar el **umbral a 0.3** hizo que el modelo **detectara más pacientes de alto riesgo** (clase 1), aunque **comete más errores** al clasificar algunos como reingresos cuando no lo son.
+        + En un **contexto clínico**, este *trade-off* puede ser aceptable: **es mejor detectar más pacientes en riesgo** (aunque se generen algunas **falsas alarmas**) que dejar a casi todos sin identificar.
+
+        Por ello, buscamos el **mejor umbral** que equilibre **precisión y recall** según el criterio clínico (ver pestaña **Umbral** para selección sistemática).
+        """)
+
+    else:
+        st.warning("Aún no hay datos suficientes para graficar. Entrena RF en 'Modelado' o sube el CSV con y_valid,y_proba_rf.")
 
 
 # ------------------------
