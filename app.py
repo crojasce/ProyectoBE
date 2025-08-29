@@ -262,9 +262,10 @@ page = st.sidebar.radio("Navegación", [
 # ------------------------
 # 1) Objetivos del proyecto
 # ------------------------
+    st.markdown("## MÉTODOS DE MACHINE LEARNING EN BIOESTADÍSTICA")
 if page == "Objetivos del proyecto":
     st.header("Objetivos del proyecto")
-    st.markdown("## MÉTODOS DE MACHINE LEARNING EN BIOESTADÍSTICA")
+    
     st.markdown("### Objetivo general")
     st.markdown("""
     Desarrollar modelos de machine learning que predigan el riesgo de resultados adversos (p. ej., reingreso hospitalario) en pacientes con diabetes mellitus, utilizando como variable principal el resultado de la HbA1c, e identificar factores asociados para generar explicaciones interpretables y útiles para la práctica clínica.
