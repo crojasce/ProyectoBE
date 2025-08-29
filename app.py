@@ -1342,28 +1342,7 @@ if page == "XGBoost - SHAP":
 # Resultados
 # ------------------------
 if page == "Resultados":
-    st.header("Resultados")
-    st.write("Modelos entrenados en la sesión:")
-    if "model_xgb" in st.session_state:
-        st.write("- XGBoost disponible")
-    if "model_rf" in st.session_state:
-        st.write("- Random Forest disponible")
-
-    if st.button("Guardar modelo XGBoost (joblib)"):
-        if "model_xgb" in st.session_state:
-            joblib.dump(st.session_state["model_xgb"], "model_xgb.joblib")
-            st.success("Modelo XGBoost guardado: model_xgb.joblib")
-        else:
-            st.warning("No hay modelo XGBoost en memoria.")
-
-    if st.button("Guardar X y col_map (pickles)"):
-        if "X" in st.session_state and "col_map" in st.session_state:
-            joblib.dump(st.session_state["X"], "X_features.joblib")
-            joblib.dump(st.session_state["col_map"], "col_map.joblib")
-            st.success("Guardados X_features.joblib y col_map.joblib")
-        else:
-            st.warning("No hay X / col_map en sesión.")
-
+   
     st.markdown("### CONCLUSIONES")
     st.markdown("""
         
