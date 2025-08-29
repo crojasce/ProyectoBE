@@ -246,21 +246,19 @@ def shap_local_plot(shap_values, X_valid, idx=0, topk=20):
 # ------------------------
 # UI: Sidebar con la nueva pestaña "Descripción del dataset"
 # ------------------------
-st.sidebar.title("Menú")
 page = st.sidebar.radio("Navegación", [
     "Cargar datos",
     "Descripción del dataset",
     "EDA",
     "Preprocesamiento",
-    "Modelado",
-    "Umbral",
-    "SHAP",
     "Regresión Logística",
     "Árbol de Decisión",
-    "Random Forest",        
-    "Random Forest - Umbral",   # <-- añade esta
+    "Random Forest",   
+    "Búsqueda de Umbral",
+    "SHAP",
     "Resultados / Export"
 ])
+
 
 
 
@@ -959,9 +957,9 @@ if page == "Random Forest":
     👉 Por ello, se **ajusta el umbral de decisión** en el Random Forest para **mejorar el recall** de reingresos (ver pestaña **Umbral**).
     """)
 # ------------------------
-# Sección: Búsqueda de Umbral (Auto) - Estático (solo visual)
+# Búsqueda de Umbral
 # ------------------------
-if page == "Búsqueda de Umbral (Auto) - Estático":
+if page == "Búsqueda de Umbral":
     st.header("Búsqueda de umbral — Visualización estática (sin correr modelo)")
 
     import matplotlib.pyplot as plt
@@ -1085,97 +1083,7 @@ if page == "Búsqueda de Umbral (Auto) - Estático":
     """)
 
 
-# ------------------------
-# 6) Modelado
-# ------------------------
-if page == "Modelado":
-    st.header("Entrenamiento de modelos")
-    if "X" not in st.session_state:
-        st.warning("Ejecuta el preprocesamiento antes de entrenar.")
-    else:
-        X = st.session_state["X"]
-        y = st.session_state["y"]
-        test_size = st.sidebar.slider("Tamaño test (proporción)", 0.1, 0.4, 0.30, 0.05)
-        random_state = 42
-        X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=test_size, stratify=y, random_state=random_state)
-        X_valid, X_test, y_valid, y_test = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=random_state)
-        st.session_state.update({"X_train": X_train, "X_valid": X_valid, "X_test": X_test, "y_train": y_train, "y_valid": y_valid, "y_test": y_test})
-        st.write("Split: train", X_train.shape, "valid", X_valid.shape, "test", X_test.shape)
 
-        # OPCIONES de entrenamiento
-        st.subheader("Entrenar modelos")
-        use_smote = st.checkbox("Aplicar SMOTE en train (para RF / LogReg)", value=False)
-        model_choice = st.selectbox("Modelo", ["XGBoost (recommended)", "Random Forest"])
-        if st.button("Entrenar"):
-            with st.spinner("Entrenando... esto puede tardar varios minutos"):
-                if model_choice == "XGBoost (recommended)":
-                    # entrenar sin SMOTE y con scale_pos_weight
-                    model = train_xgboost(X_train, y_train, X_valid, y_valid)
-                    st.session_state["model_xgb"] = model
-                    st.success("XGBoost entrenado.")
-                else:
-                    if use_smote:
-                        sm = SMOTE(random_state=42)
-                        X_train_res, y_train_res = sm.fit_resample(X_train, y_train)
-                        model = train_rf(X_train_res, y_train_res)
-                    else:
-                        model = train_rf(X_train, y_train)
-                    st.session_state["model_rf"] = model
-                    st.success("Random Forest entrenado.")
-
-        # Evaluar modelos si ya entrenados
-        st.subheader("Evaluación rápida (umbral 0.5)")
-        if "model_xgb" in st.session_state:
-            model = st.session_state["model_xgb"]
-            y_proba = model.predict_proba(X_valid)[:,1]
-            y_pred = (y_proba >= 0.5).astype(int)
-            st.write("XGBoost - ROC AUC:", roc_auc_score(y_valid, y_proba))
-            st.text(classification_report(y_valid, y_pred))
-        if "model_rf" in st.session_state:
-            model = st.session_state["model_rf"]
-            y_proba = model.predict_proba(X_valid)[:,1]
-            y_pred = (y_proba >= 0.5).astype(int)
-            st.write("RandomForest - ROC AUC:", roc_auc_score(y_valid, y_proba))
-            st.text(classification_report(y_valid, y_pred))
-
-# ------------------------
-# 7) Umbral
-# ------------------------
-if page == "Umbral":
-    st.header("Optimización y ajuste de umbral")
-    if "model_xgb" not in st.session_state and "model_rf" not in st.session_state:
-        st.warning("Entrena al menos un modelo en la pestaña 'Modelado' primero.")
-    else:
-        # elegir modelo
-        model_options = []
-        if "model_xgb" in st.session_state:
-            model_options.append("XGBoost")
-        if "model_rf" in st.session_state:
-            model_options.append("RandomForest")
-        model_name = st.selectbox("Elegir modelo para optimizar umbral", model_options)
-        model = st.session_state["model_xgb"] if model_name == "XGBoost" else st.session_state.get("model_rf", None)
-        X_valid = st.session_state["X_valid"]
-        y_valid = st.session_state["y_valid"]
-
-        y_proba_valid = model.predict_proba(X_valid)[:,1]
-        res = optimize_thresholds(y_valid, y_proba_valid, min_prec=st.slider("Mínima precisión aceptable para constraint", 0.05, 0.5, 0.20, 0.05))
-        st.write("RESULTADOS BÚSQUEDA DE UMBRALES")
-        st.write(f"Mejor umbral (por F1): {res['best_threshold_f1']:.4f} --> F1={res['best_f1']:.4f}, Precision={res['best_prec_f1']:.4f}, Recall={res['best_rec_f1']:.4f}")
-        st.write(f"Mejor umbral (Youden - ROC): {res['best_threshold_youden']:.4f}")
-        if res['best_threshold_prec_constraint'] is not None:
-            st.write(f"Mejor umbral (max recall con precision>={st.session_state.get('min_prec', 0.2)}): {res['best_threshold_prec_constraint']:.4f} -> Prec={res['prec_constraint_prec']:.3f}, Rec={res['prec_constraint_rec']:.3f}")
-        else:
-            st.write("No se encontró umbral con la precisión mínima exigida.")
-
-        st.subheader("Probar umbral personalizado")
-        thr = st.slider("Selecciona umbral", 0.01, 0.99, float(res['best_threshold_f1']), 0.01)
-        report, cm, y_pred = eval_with_threshold(y_valid, y_proba_valid, thr)
-        st.write("Classification report (validación):")
-        st.json(report)
-        st.write("Matriz de confusión:")
-        fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
-        st.pyplot(fig)
 
 # ------------------------
 # 8) SHAP
