@@ -294,18 +294,20 @@ if page == "Descripción del dataset":
         st.markdown("""
         La diabetes mellitus representa una de las crisis sanitarias más urgentes a nivel mundial. Según la última edición del IDF Diabetes Atlas (2025), aproximadamente 589 millones de adultos entre 20 y 79 años viven con diabetes, cifra que podría aumentar hasta 853 millones para 2050 si no se adoptan medidas efectivas.
 
-        - En 2024, la diabetes fue responsable de 3,4 millones de muertes y generó un gasto sanitario global estimado en 1 billón de dólares estadounidenses Diabetes Atlas
+        - En 2024, la diabetes fue responsable de 3,4 millones de muertes y generó un gasto sanitario global estimado en 1 billón de dólares estadounidenses.
         - La carga recae de manera desproporcionada sobre los países de ingresos bajos y medios, que concentran aproximadamente el 81 % de los adultos con diabetes, con una proporción significativa de casos no diagnosticados
 
         - Esta enfermedad crónica conlleva complicaciones graves como daño vascular, renal, ocular y aumento de mortalidad precoz, lo que resalta la necesidad imperiosa de mejorar la detección temprana, el acceso al tratamiento y las políticas de salud pública.
         """)
         st.markdown("### Importancia global de la diabetes mellitus en Colombia")
         st.markdown("""
-        En Colombia, la situación también es preocupante. Datos del IDF Diabetes Atlas indican que el 8,4 % de la población adulta padece diabetes, lo que equivale a unos 3 033 800 casos en un total de 36 728 500 adultos 
-        - International Diabetes Federation:
-        En Bogotá, un estudio transversal realizado entre 2022 y 2023 muestra que el 11 % de los adultos tienen diabetes tipo 2, cifra superior a la estimada previamente, con elevadas tasas asociadas a factores como edad avanzada, obesidad abdominal, dislipidemia y bajo nivel educativo PubMed
+        En Colombia, la situación también es preocupante. Datos del IDF Diabetes Atlas indican que el 8,4 % de la población adulta padece diabetes, lo que equivale a unos 3 033 800 casos en un total de 36 728 500 adultos. 
+        En Bogotá, un estudio transversal realizado entre 2022 y 2023 muestra que el 11 % de los adultos tienen diabetes tipo 2, cifra superior a la estimada previamente, con elevadas tasas asociadas a factores como edad avanzada, obesidad abdominal, dislipidemia y bajo nivel educativo.
         Estos datos enfatizan la urgencia de intervenciones conjuntas entre políticas públicas, atención primaria y educación comunitaria para prevenir un aumento mayor de la prevalencia y sus complicaciones en el país.
         """)
+         st.markdown("### Contexto y motivación")
+        st.markdown("""
+        La diabetes mellitus es una de las principales causas de morbilidad y mortalidad en el mundo. La medición de la hemoglobina glicosilada (HbA1c) es un indicador clave del control glucémico y se ha asociado con mejores resultados clínicos y menor riesgo de complicaciones. En el contexto hospitalario, la identificación y manejo oportuno del control glucémico representan una oportunidad para reducir reingresos y optimizar la atención. Nuestro proyecto se centra en analizar datos clínicos de hospitalizaciones en pacientes con diagnóstico de diabetes, explorando el papel de la HbA1c y otras variables en la predicción de riesgo.
         st.markdown("### Variables clave (breve diccionario)")
         st.markdown("""
         - **encounter_id, patient_nbr**: identificadores (se eliminarán en el preprocesamiento).
